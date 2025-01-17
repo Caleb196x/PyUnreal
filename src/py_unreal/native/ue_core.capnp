@@ -15,22 +15,7 @@ interface UnrealCore
 
     struct Argument
     {
-        class @0 :Class;
-        name @1 :Text;
-        union {
-            boolValue @2 :Bool;
-            uintValue @3 :UInt64;
-            intValue @4 :Int64;
-            strValue @5 :Text;
-            floatValue @6 :Float64;
-            object @7 :Object;
-            enumValue @8 :Int64;
-        }
-    }
-
-    struct Property
-    {
-        class @0 :Class;
+        ueClass @0 :Class;
         name @1 :Text;
         union {
             boolValue @2 :Bool;
@@ -58,24 +43,24 @@ interface UnrealCore
         onCall @0 (object :Object, params :List(Argument)) -> ();
     }
 
-    newObject @0 (outer :Object, class :Class, objName :Text, flags :UInt64, constructArgs :List(Argument)) -> (object :Object);
-    destroyObject @1 (outer :Object) -> (result :Bool);
+    newObject @0 (own :Object, ueClass :Class, objName :Text, flags :UInt64, constructArgs :List(Argument)) -> (object :Object);
+    destroyObject @1 (own :Object) -> (result :Bool);
 
-    callFunction @2 (outer :Object, callObject :Object, class :Class, funcName :Text, params :List(Argument)) -> (return :Argument, outParams :List(Argument));
-    callStaticFunction @3 (class :Class, funcName :Text, params :List(Argument)) -> (return :Argument, outParams :List(Argument));
+    callFunction @2 (own :Object, callObject :Object, ueClass :Class, funcName :Text, params :List(Argument)) -> (return :Argument, outParams :List(Argument));
+    callStaticFunction @3 (ueClass :Class, funcName :Text, params :List(Argument)) -> (return :Argument, outParams :List(Argument));
 
-    findClass @4 (class :Class) -> (object :Object);
-    loadClass @5 (class :Class) -> (object :Object);
-    staticClass @6 (object :Object) -> (class :Class);
+    findClass @4 (ueClass :Class) -> (object :Object);
+    loadClass @5 (ueClass :Class) -> (object :Object);
+    staticClass @6 (object :Object) -> (ueClass :Class);
 
     bindDelegate @7 (object :Object, callback :DelegateCallback) -> ();
     unbindDelegate @8 (object :Object) -> ();
     addMultiDelegate @9 (object :Object, callback :DelegateCallback) -> (delegateObject :Object);
     removeMultiDelegate @10 (object :Object, delegateObject :Object) -> ();
 
-    registerOverrideClass @11 (class :Class, parent :Class, methods :List(Method)) -> ();
-    unregisterOverrideClass @12 (class :Class, parent :Class) -> ();
+    registerOverrideClass @11 (ueClass :Class, parent :Class, methods :List(Method)) -> ();
+    unregisterOverrideClass @12 (ueClass :Class, parent :Class) -> ();
 
-    setProperty @13 (class :Class, owner :Object, property :Property) -> ();
-    getProperty @14 (class :Class, owner :Object, propertyName :Text) -> (property :Property);
+    setProperty @13 (ueClass :Class, owner :Object, property :Argument) -> ();
+    getProperty @14 (ueClass :Class, owner :Object, propertyName :Text) -> (property :Argument);
 }
