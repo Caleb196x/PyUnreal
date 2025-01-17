@@ -62,6 +62,8 @@ CAPNP_DECLARE_SCHEMA(b98d880189098282);
 CAPNP_DECLARE_SCHEMA(a7e25842dfa5a75b);
 CAPNP_DECLARE_SCHEMA(e3e7ec6b9d30864b);
 CAPNP_DECLARE_SCHEMA(ff494a70ed24ffae);
+CAPNP_DECLARE_SCHEMA(95cc54545d641932);
+CAPNP_DECLARE_SCHEMA(92051293bef37fa0);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -111,6 +113,8 @@ struct UnrealCore {
   struct SetPropertyResults;
   struct GetPropertyParams;
   struct GetPropertyResults;
+  struct RegisterCreatedPyObjectParams;
+  struct RegisterCreatedPyObjectResults;
 
   #if !CAPNP_LITE
   struct _capnpPrivate {
@@ -737,6 +741,36 @@ struct UnrealCore::GetPropertyResults {
   };
 };
 
+struct UnrealCore::RegisterCreatedPyObjectParams {
+  RegisterCreatedPyObjectParams() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(95cc54545d641932, 0, 3)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct UnrealCore::RegisterCreatedPyObjectResults {
+  RegisterCreatedPyObjectResults() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(92051293bef37fa0, 0, 0)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
 // =======================================================================================
 
 #if !CAPNP_LITE
@@ -787,6 +821,8 @@ public:
   ::capnp::Request< ::UnrealCore::SetPropertyParams,  ::UnrealCore::SetPropertyResults> setPropertyRequest(
       ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
   ::capnp::Request< ::UnrealCore::GetPropertyParams,  ::UnrealCore::GetPropertyResults> getPropertyRequest(
+      ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
+  ::capnp::Request< ::UnrealCore::RegisterCreatedPyObjectParams,  ::UnrealCore::RegisterCreatedPyObjectResults> registerCreatedPyObjectRequest(
       ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
 
 protected:
@@ -864,6 +900,10 @@ protected:
   typedef  ::UnrealCore::GetPropertyResults GetPropertyResults;
   typedef ::capnp::CallContext<GetPropertyParams, GetPropertyResults> GetPropertyContext;
   virtual ::kj::Promise<void> getProperty(GetPropertyContext context);
+  typedef  ::UnrealCore::RegisterCreatedPyObjectParams RegisterCreatedPyObjectParams;
+  typedef  ::UnrealCore::RegisterCreatedPyObjectResults RegisterCreatedPyObjectResults;
+  typedef ::capnp::CallContext<RegisterCreatedPyObjectParams, RegisterCreatedPyObjectResults> RegisterCreatedPyObjectContext;
+  virtual ::kj::Promise<void> registerCreatedPyObject(RegisterCreatedPyObjectContext context);
 
   inline  ::UnrealCore::Client thisCap() {
     return ::capnp::Capability::Server::thisCap()
@@ -4321,6 +4361,181 @@ private:
 };
 #endif  // !CAPNP_LITE
 
+class UnrealCore::RegisterCreatedPyObjectParams::Reader {
+public:
+  typedef RegisterCreatedPyObjectParams Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasPyObject() const;
+  inline  ::UnrealCore::Object::Reader getPyObject() const;
+
+  inline bool hasUnrealObject() const;
+  inline  ::UnrealCore::Object::Reader getUnrealObject() const;
+
+  inline bool hasUeClass() const;
+  inline  ::UnrealCore::Class::Reader getUeClass() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class UnrealCore::RegisterCreatedPyObjectParams::Builder {
+public:
+  typedef RegisterCreatedPyObjectParams Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasPyObject();
+  inline  ::UnrealCore::Object::Builder getPyObject();
+  inline void setPyObject( ::UnrealCore::Object::Reader value);
+  inline  ::UnrealCore::Object::Builder initPyObject();
+  inline void adoptPyObject(::capnp::Orphan< ::UnrealCore::Object>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Object> disownPyObject();
+
+  inline bool hasUnrealObject();
+  inline  ::UnrealCore::Object::Builder getUnrealObject();
+  inline void setUnrealObject( ::UnrealCore::Object::Reader value);
+  inline  ::UnrealCore::Object::Builder initUnrealObject();
+  inline void adoptUnrealObject(::capnp::Orphan< ::UnrealCore::Object>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Object> disownUnrealObject();
+
+  inline bool hasUeClass();
+  inline  ::UnrealCore::Class::Builder getUeClass();
+  inline void setUeClass( ::UnrealCore::Class::Reader value);
+  inline  ::UnrealCore::Class::Builder initUeClass();
+  inline void adoptUeClass(::capnp::Orphan< ::UnrealCore::Class>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Class> disownUeClass();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class UnrealCore::RegisterCreatedPyObjectParams::Pipeline {
+public:
+  typedef RegisterCreatedPyObjectParams Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::UnrealCore::Object::Pipeline getPyObject();
+  inline  ::UnrealCore::Object::Pipeline getUnrealObject();
+  inline  ::UnrealCore::Class::Pipeline getUeClass();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class UnrealCore::RegisterCreatedPyObjectResults::Reader {
+public:
+  typedef RegisterCreatedPyObjectResults Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class UnrealCore::RegisterCreatedPyObjectResults::Builder {
+public:
+  typedef RegisterCreatedPyObjectResults Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class UnrealCore::RegisterCreatedPyObjectResults::Pipeline {
+public:
+  typedef RegisterCreatedPyObjectResults Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 // =======================================================================================
 
 #if !CAPNP_LITE
@@ -6635,6 +6850,123 @@ inline void UnrealCore::GetPropertyResults::Builder::adoptProperty(
 inline ::capnp::Orphan< ::UnrealCore::Argument> UnrealCore::GetPropertyResults::Builder::disownProperty() {
   return ::capnp::_::PointerHelpers< ::UnrealCore::Argument>::disown(_builder.getPointerField(
       ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::RegisterCreatedPyObjectParams::Reader::hasPyObject() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::RegisterCreatedPyObjectParams::Builder::hasPyObject() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Object::Reader UnrealCore::RegisterCreatedPyObjectParams::Reader::getPyObject() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::RegisterCreatedPyObjectParams::Builder::getPyObject() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Object::Pipeline UnrealCore::RegisterCreatedPyObjectParams::Pipeline::getPyObject() {
+  return  ::UnrealCore::Object::Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::RegisterCreatedPyObjectParams::Builder::setPyObject( ::UnrealCore::Object::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::RegisterCreatedPyObjectParams::Builder::initPyObject() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::RegisterCreatedPyObjectParams::Builder::adoptPyObject(
+    ::capnp::Orphan< ::UnrealCore::Object>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Object> UnrealCore::RegisterCreatedPyObjectParams::Builder::disownPyObject() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::RegisterCreatedPyObjectParams::Reader::hasUnrealObject() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::RegisterCreatedPyObjectParams::Builder::hasUnrealObject() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Object::Reader UnrealCore::RegisterCreatedPyObjectParams::Reader::getUnrealObject() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::RegisterCreatedPyObjectParams::Builder::getUnrealObject() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Object::Pipeline UnrealCore::RegisterCreatedPyObjectParams::Pipeline::getUnrealObject() {
+  return  ::UnrealCore::Object::Pipeline(_typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::RegisterCreatedPyObjectParams::Builder::setUnrealObject( ::UnrealCore::Object::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::RegisterCreatedPyObjectParams::Builder::initUnrealObject() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::RegisterCreatedPyObjectParams::Builder::adoptUnrealObject(
+    ::capnp::Orphan< ::UnrealCore::Object>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Object> UnrealCore::RegisterCreatedPyObjectParams::Builder::disownUnrealObject() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::disown(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::RegisterCreatedPyObjectParams::Reader::hasUeClass() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::RegisterCreatedPyObjectParams::Builder::hasUeClass() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Class::Reader UnrealCore::RegisterCreatedPyObjectParams::Reader::getUeClass() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_reader.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::RegisterCreatedPyObjectParams::Builder::getUeClass() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Class::Pipeline UnrealCore::RegisterCreatedPyObjectParams::Pipeline::getUeClass() {
+  return  ::UnrealCore::Class::Pipeline(_typeless.getPointerField(2));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::RegisterCreatedPyObjectParams::Builder::setUeClass( ::UnrealCore::Class::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::set(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::RegisterCreatedPyObjectParams::Builder::initUeClass() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::init(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::RegisterCreatedPyObjectParams::Builder::adoptUeClass(
+    ::capnp::Orphan< ::UnrealCore::Class>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::adopt(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Class> UnrealCore::RegisterCreatedPyObjectParams::Builder::disownUeClass() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::disown(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
 

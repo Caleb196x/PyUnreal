@@ -63,4 +63,6 @@ interface UnrealCore
 
     setProperty @13 (ueClass :Class, owner :Object, property :Argument) -> ();
     getProperty @14 (ueClass :Class, owner :Object, propertyName :Text) -> (property :Argument);
+
+    registerCreatedPyObject @15 (pyObject :Object, unrealObject :Object, ue_class :Class) -> ();
 }

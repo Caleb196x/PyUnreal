@@ -28,6 +28,9 @@
         return NULL; \
     } \
 
+#define PYTHON_MODULE_NAME "py_unreal"
+#define UNREAD_OBJECT_PROPERTY_NAME "unreal_object"
+
 /**
  * capnp client
  */
@@ -551,6 +554,116 @@ static PyObject* unreal_core_destory_object(PyObject* self, PyObject* args)
     })
 }
 
+static PyObject* CreateObjectFromSpecifiedClass(const char* class_type_name)
+{
+    // PyObject* module_name = PyUnicode_FromString();
+    PyObject* py_module = PyImport_ImportModule(PYTHON_MODULE_NAME); // todo: Compatible with other Python versions
+    if (py_module == NULL) {
+        PyErr_SetString(PyExc_ImportError, "Failed to import unreal module");
+        return NULL;
+    }
+
+    PyObject* py_class = PyObject_GetAttrString(py_module, class_type_name);
+    if (py_class == NULL || !PyType_Check(py_class)) {
+        char error_msg[128];
+        snprintf(error_msg, sizeof(error_msg), "Failed to find unreal class: %s", class_type_name);
+        PyErr_SetString(PyExc_ImportError, error_msg);
+        Py_DECREF(py_module);
+        return NULL;
+    }
+
+    PyObject* py_object = PyObject_New(PyObject, (PyTypeObject*)py_class);
+    if (py_object == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for unreal object");
+        Py_DECREF(py_module);
+        Py_INCREF(py_class);
+        return NULL;
+    }
+
+    Py_INCREF(py_module);
+    Py_INCREF(py_class);
+
+    return py_object;
+}
+
+static PyObject* SendPyObjectToUnrealEngine(PyObject* py_object, UnrealObject* unreal_object, const char* class_type_name)
+{
+    auto create_py_object_request = ue_core_client->client.registerCreatedPyObjectRequest();
+    create_py_object_request.initPyObject().setAddress(reinterpret_cast<uint64_t>(py_object));
+    create_py_object_request.initUnrealObject().setAddress(unreal_object->address);
+    create_py_object_request.initUeClass().setTypeName(class_type_name);
+
+    kj::WaitScope& wait_scope = io_context.waitScope;
+    CATCH_EXCEPTION_FOR_RPC_CALL({
+        create_py_object_request.send().wait(wait_scope);
+        return Py_True;
+    })
+}
+
+static PyObject* ParseValueFromFunctionReturn(const capnp::Response<UnrealCore::CallFunctionResults>& result)
+{
+    // Initialize the object's fields
+    auto return_value = result.getReturn();
+    const char* class_type_name = return_value.getUeClass().getTypeName().cStr();
+
+    // maybe unuse
+    const char* name = return_value.getName().cStr();
+
+    // Set the value based on the return type
+    switch (return_value.which()) {
+        case UnrealCore::Argument::BOOL_VALUE:
+        {
+            bool value = return_value.getBoolValue();
+            if (PyBool_Check(value)) {
+                return Py_True;
+            }
+            else {
+                return Py_False;
+            }
+        }
+        case UnrealCore::Argument::UINT_VALUE:
+            return PyLong_FromUnsignedLongLong(return_value.getUintValue());
+        case UnrealCore::Argument::FLOAT_VALUE:
+            return PyFloat_FromDouble(return_value.getFloatValue());
+        case UnrealCore::Argument::STR_VALUE:
+            return PyUnicode_FromString(return_value.getStrValue().cStr());
+        case UnrealCore::Argument::ENUM_VALUE:
+            return PyLong_FromLongLong(return_value.getEnumValue());
+        case UnrealCore::Argument::OBJECT:
+        {
+            // Create a new UnrealObject for object returns
+            UnrealObject* obj = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type);
+            if (obj == NULL) {
+                obj = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type); // try again
+            }
+            obj->address = return_value.getObject().getAddress();
+            obj->name = return_value.getObject().getName().cStr();
+            PyObject* py_object = CreateObjectFromSpecifiedClass(class_type_name);
+            if (py_object == NULL) {
+                return NULL;
+            }
+            // set unreal object to the py object's property, property name is UNREAD_OBJECT_PROPERTY_NAME
+            if (PyObject_SetAttrString(py_object, UNREAD_OBJECT_PROPERTY_NAME, (PyObject*)obj) != 0) {
+                PyErr_SetString(PyExc_AttributeError, "Failed to set unreal object to the py object's unreal objectproperty");
+                Py_DECREF(py_object);
+                return NULL;
+            }
+
+            SendPyObjectToUnrealEngine(py_object, obj, class_type_name);
+
+            return py_object;
+        }
+        default:
+        {
+            PyErr_SetString(PyExc_ValueError, "Unsupported return value type");
+            return NULL;
+        }
+
+    }
+
+    return NULL;
+}
+
 /**
  * unreal_core.call_function
  * call rpc function (callFunction) to call a function
@@ -603,10 +716,17 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
     kj::WaitScope& wait_scope = io_context.waitScope;
     CATCH_EXCEPTION_FOR_RPC_CALL({
         capnp::Response<UnrealCore::CallFunctionResults> result = call_function_request.send().wait(wait_scope);
-        Argument* return_value = (Argument*)PyObject_New(Argument, &Argument_Type);
-        return_value->name = result.getReturn().getName().cStr();
         
-        
+        // 对于返回值是unreal object的情况的处理：
+        // 1. 根据类名创建一个对应的pyobject
+        // 2. 将获取到的unreal object设置到对应的property中
+        // 3. 返回创建的pyobject
+        PyObject* return_value = ParseValueFromFunctionReturn(result);
+        if (return_value == NULL) {
+            return NULL;
+        }
+
+        return return_value; // todo: tuple
     })
 }
 
