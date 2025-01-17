@@ -726,7 +726,7 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
             return NULL;
         }
 
-        return return_value; // todo: tuple
+        return return_value; // todo: tuple for other output params
     })
 }
 
