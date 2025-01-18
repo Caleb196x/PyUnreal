@@ -600,10 +600,9 @@ static PyObject* SendPyObjectToUnrealEngine(PyObject* py_object, UnrealObject* u
     })
 }
 
-static PyObject* ParseValueFromFunctionReturn(const capnp::Response<UnrealCore::CallFunctionResults>& result)
+static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reader& return_value, bool is_out_param)
 {
     // Initialize the object's fields
-    auto return_value = result.getReturn();
     const char* class_type_name = return_value.getUeClass().getTypeName().cStr();
 
     // maybe unuse
@@ -631,6 +630,16 @@ static PyObject* ParseValueFromFunctionReturn(const capnp::Response<UnrealCore::
             return PyLong_FromLongLong(return_value.getEnumValue());
         case UnrealCore::Argument::OBJECT:
         {
+            if (is_out_param) {
+                uint64_t address = return_value.getObject().getAddress();
+                void* object = (void*)address;
+                return (PyObject*)object;
+            }
+
+            // Handle the case where return value is an unreal object:
+            // 1. Create a corresponding pyobject based on the class name
+            // 2. Set the obtained unreal object to the corresponding property
+            // 3. Return the created pyobject
             // Create a new UnrealObject for object returns
             UnrealObject* obj = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type);
             if (obj == NULL) {
@@ -649,6 +658,7 @@ static PyObject* ParseValueFromFunctionReturn(const capnp::Response<UnrealCore::
                 return NULL;
             }
 
+            // register the py object to unreal engine
             SendPyObjectToUnrealEngine(py_object, obj, class_type_name);
 
             return py_object;
@@ -717,16 +727,25 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
     CATCH_EXCEPTION_FOR_RPC_CALL({
         capnp::Response<UnrealCore::CallFunctionResults> result = call_function_request.send().wait(wait_scope);
         
-        // 对于返回值是unreal object的情况的处理：
-        // 1. 根据类名创建一个对应的pyobject
-        // 2. 将获取到的unreal object设置到对应的property中
-        // 3. 返回创建的pyobject
-        PyObject* return_value = ParseValueFromFunctionReturn(result);
+        PyObject* return_value = ParseValueFromFunctionReturn(result.getReturn(), false);
         if (return_value == NULL) {
-            return NULL;
+            return NULL; 
         }
 
-        return return_value; // todo: tuple for other output params
+        // handle out params
+        auto out_params = result.getOutParams();
+        auto out_params_size = out_params.size();
+
+        PyObject* tuple = PyTuple_New(out_params_size);
+        PyTuple_SET_ITEM(tuple, 0, return_value);
+        for (Py_ssize_t i = 0; i < out_params_size; i++) {
+            // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
+            PyObject* out_param = ParseValueFromFunctionReturn(out_params[i], true); 
+            
+            PyTuple_SET_ITEM(tuple, i + 1, out_param);
+        }
+
+        return tuple; 
     })
 }
 
