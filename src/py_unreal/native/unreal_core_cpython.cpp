@@ -600,7 +600,7 @@ static PyObject* SendPyObjectToUnrealEngine(PyObject* py_object, UnrealObject* u
     })
 }
 
-static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reader& return_value, bool is_out_param)
+static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reader& return_value, bool is_retrun_value)
 {
     // Initialize the object's fields
     const char* class_type_name = return_value.getUeClass().getTypeName().cStr();
@@ -630,7 +630,7 @@ static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reade
             return PyLong_FromLongLong(return_value.getEnumValue());
         case UnrealCore::Argument::OBJECT:
         {
-            if (is_out_param) {
+            if (!is_retrun_value) {
                 uint64_t address = return_value.getObject().getAddress();
                 void* object = (void*)address;
                 return (PyObject*)object;
@@ -727,7 +727,7 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
     CATCH_EXCEPTION_FOR_RPC_CALL({
         capnp::Response<UnrealCore::CallFunctionResults> result = call_function_request.send().wait(wait_scope);
         
-        PyObject* return_value = ParseValueFromFunctionReturn(result.getReturn(), false);
+        PyObject* return_value = ParseValueFromFunctionReturn(result.getReturn(), true);
         if (return_value == NULL) {
             return NULL; 
         }
@@ -740,7 +740,7 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
         PyTuple_SET_ITEM(tuple, 0, return_value);
         for (Py_ssize_t i = 0; i < out_params_size; i++) {
             // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
-            PyObject* out_param = ParseValueFromFunctionReturn(out_params[i], true); 
+            PyObject* out_param = ParseValueFromFunctionReturn(out_params[i], false); 
             
             PyTuple_SET_ITEM(tuple, i + 1, out_param);
         }
@@ -764,7 +764,56 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
  */
 static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args)
 {
-    Py_RETURN_NONE;
+    CHECK_CLIENT_AND_RECREATE_IT()
+
+    ClassProp* ue_class = NULL;
+    char* function_name = NULL;
+    PyObject* params = NULL;
+
+    if (!PyArg_ParseTuple(args, "O!sO!", &ClassProp_Type, &ue_class, &function_name, &PyList_Type, &params)) {
+        return NULL;
+    }
+
+    auto call_static_function_request = ue_core_client->client.callStaticFunctionRequest();
+    call_static_function_request.initUeClass().setTypeName(ue_class->type_name);
+
+    call_static_function_request.setFuncName(function_name);
+
+    // handle params
+    Py_ssize_t list_size = PyList_Size(params);
+    capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder call_function_args = call_static_function_request.initParams(list_size);
+
+    if (!SetupArguments(params, call_function_args, list_size))
+    {
+        PyErr_SetString(PyExc_TypeError, "Parse params failed");
+        return NULL;
+    }
+
+    kj::WaitScope& wait_scope = io_context.waitScope;
+    CATCH_EXCEPTION_FOR_RPC_CALL({
+        capnp::Response<UnrealCore::CallStaticFunctionResults> result = call_static_function_request.send().wait(wait_scope);
+        
+        PyObject* return_value = ParseValueFromFunctionReturn(result.getReturn(), true);
+        if (return_value == NULL) {
+            return NULL; 
+        }
+
+        // handle out params
+        auto out_params = result.getOutParams();
+        auto out_params_size = out_params.size();
+
+        PyObject* tuple = PyTuple_New(out_params_size);
+        PyTuple_SET_ITEM(tuple, 0, return_value);
+        for (Py_ssize_t i = 0; i < out_params_size; i++) {
+            // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
+            PyObject* out_param = ParseValueFromFunctionReturn(out_params[i], false); 
+            
+            PyTuple_SET_ITEM(tuple, i + 1, out_param);
+        }
+
+        return tuple; 
+    })
+
 }
 
 /**
@@ -779,7 +828,26 @@ static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args
  */
 static PyObject* unreal_core_get_property(PyObject* self, PyObject* args)
 {
-    Py_RETURN_NONE;
+    CHECK_CLIENT_AND_RECREATE_IT()
+
+    ClassProp* ue_class = NULL;
+    PyObject* object = NULL;
+    char* property_name = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO!s", &object, &ClassProp_Type, &ue_class, &property_name)) {
+        return NULL;
+    }
+
+    auto get_property_request = ue_core_client->client.getPropertyRequest();
+    get_property_request.initUeClass().setTypeName(ue_class->type_name);
+    get_property_request.initOwner().setAddress(reinterpret_cast<uint64_t>(object));
+    get_property_request.setPropertyName(property_name);
+
+    kj::WaitScope& wait_scope = io_context.waitScope;
+    CATCH_EXCEPTION_FOR_RPC_CALL({
+        capnp::Response<UnrealCore::GetPropertyResults> result = get_property_request.send().wait(wait_scope);
+        return ParseValueFromFunctionReturn(result.getProperty(), false);
+    })
 }
 
 /**
