@@ -2,6 +2,7 @@
 #include "ue_core.capnp.h"
 #include <kj/async-io.h>
 #include <capnp/rpc-twoparty.h>
+#include <windows.h>
 
 
 #define CHECK_CLIENT_AND_RECREATE_IT() \
@@ -20,7 +21,7 @@
         const char* err_file = e.getFile(); \
         const int err_line = e.getLine(); \
         const char* err_msg = e.getDescription().cStr(); \
-        int err_size = strlen(err_file) + strlen(err_msg) + 5; \
+        size_t err_size = strlen(err_file) + strlen(err_msg) + 5; \
         char* err_str = (char*)malloc(err_size); \
         sprintf(err_str, "[%s]:[%d]: %s", err_file, err_line, err_msg); \
         PyErr_SetString(PyExc_RuntimeError, err_str); \
@@ -67,7 +68,21 @@ static CapnpClient* create_ue_core_client()
             server_port = port;
             break;
         } catch (kj::Exception& e) {
-            printf("connect to %s failed, try next port\n", ip_addr);
+            const char* err_desc = e.getDescription().cStr();
+            #ifdef _WIN32
+                // On Windows, convert to wide string and back to handle encoding
+                int wide_size = MultiByteToWideChar(CP_UTF8, 0, err_desc, -1, NULL, 0);
+                wchar_t* wide_str = new wchar_t[wide_size];
+                MultiByteToWideChar(CP_UTF8, 0, err_desc, -1, wide_str, wide_size);
+                
+                int ansi_size = WideCharToMultiByte(CP_ACP, 0, wide_str, -1, NULL, 0, NULL, NULL);
+                char* ansi_str = new char[ansi_size];
+                WideCharToMultiByte(CP_ACP, 0, wide_str, -1, ansi_str, ansi_size, NULL, NULL);
+                
+                delete[] wide_str;
+                err_desc = ansi_str;
+            #endif
+            printf("connect to %s failed, error: %s, try next port\n", ip_addr, err_desc);
         }
     }
 
@@ -239,7 +254,7 @@ typedef struct {
     union {
         bool bool_value;
         uint64_t uint_value;
-        float float_value;
+        double float_value;
         const char* str_value;
         int64_t enum_value;
         PyObject* object;
@@ -454,7 +469,7 @@ static bool CreateUnrealCoreArgument(PyObject* py_argument, UnrealCore::Argument
 
 static bool SetupArguments(PyObject* src_args, capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder& dest_args, Py_ssize_t list_size)
 {
-    for (Py_ssize_t i = 0; i < list_size; i++) {
+    for (uint32_t i = 0; i < list_size; i++) {
         PyObject* item = PyList_GetItem(src_args, i);
         if (item == NULL) {
             return false;
@@ -730,7 +745,7 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
 
     // handle params
     Py_ssize_t list_size = PyList_Size(params);
-    capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder call_function_args = call_function_request.initParams(list_size);
+    capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder call_function_args = call_function_request.initParams((uint32_t)list_size);
 
     if (!SetupArguments(params, call_function_args, list_size))
     {
