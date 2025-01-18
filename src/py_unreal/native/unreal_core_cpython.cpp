@@ -411,10 +411,49 @@ static PyTypeObject Method_Type = {
 /**
  * Utils functions
  */
+static bool CreateUnrealCoreArgument(PyObject* py_argument, UnrealCore::Argument::Builder& unreal_core_argument)
+{
+    if (PyObject_TypeCheck(py_argument, &Argument_Type)) {
+        return false;
+    }
+
+    Argument* argument = (Argument*)py_argument;
+    unreal_core_argument.setName(argument->name);
+    unreal_core_argument.initUeClass().setTypeName(argument->ue_class->type_name);
+
+    switch (argument->value_type) {
+        case ARGUMENT_TYPE_BOOL:
+            unreal_core_argument.setBoolValue(argument->bool_value);
+            break;
+        case ARGUMENT_TYPE_UINT:
+            unreal_core_argument.setUintValue(argument->uint_value);
+            break;
+        case ARGUMENT_TYPE_FLOAT:
+            unreal_core_argument.setFloatValue(argument->float_value);
+            break;
+        case ARGUMENT_TYPE_STRING:
+            unreal_core_argument.setStrValue(argument->str_value);
+            break;
+        case ARGUMENT_TYPE_ENUM:
+            unreal_core_argument.setEnumValue(argument->enum_value);
+            break;
+        case ARGUMENT_TYPE_OBJECT:
+        {
+            unreal_core_argument.initObject().setAddress(reinterpret_cast<uint64_t>(argument->object));
+            break;
+        }
+        default:
+        {
+            PyErr_SetString(PyExc_TypeError, "Invalid argument type");
+            return false;
+        }
+    }
+    return true;
+}
+
 
 static bool SetupArguments(PyObject* src_args, capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder& dest_args, Py_ssize_t list_size)
 {
-
     for (Py_ssize_t i = 0; i < list_size; i++) {
         PyObject* item = PyList_GetItem(src_args, i);
         if (item == NULL) {
@@ -426,32 +465,8 @@ static bool SetupArguments(PyObject* src_args, capnp::List<UnrealCore::Argument,
             dest_args[i].setName(argument->name);
             dest_args[i].initUeClass().setTypeName(argument->ue_class->type_name);
 
-            switch (argument->value_type) {
-                case ARGUMENT_TYPE_BOOL:
-                    dest_args[i].setBoolValue(argument->bool_value);
-                    break;
-                case ARGUMENT_TYPE_UINT:
-                    dest_args[i].setUintValue(argument->uint_value);
-                    break;
-                case ARGUMENT_TYPE_FLOAT:
-                    dest_args[i].setFloatValue(argument->float_value);
-                    break;
-                case ARGUMENT_TYPE_STRING:
-                    dest_args[i].setStrValue(argument->str_value);
-                    break;
-                case ARGUMENT_TYPE_ENUM:
-                    dest_args[i].setEnumValue(argument->enum_value);
-                    break;
-                case ARGUMENT_TYPE_OBJECT:
-                {
-                    dest_args[i].initObject().setAddress(reinterpret_cast<uint64_t>(argument->object));
-                    break;
-                }
-                default:
-                {
-                    PyErr_SetString(PyExc_TypeError, "Invalid argument type");
-                    return false;
-                }
+            if (!CreateUnrealCoreArgument(item, dest_args[i])) {
+                return false;
             }
         }
         else {
@@ -861,7 +876,29 @@ static PyObject* unreal_core_get_property(PyObject* self, PyObject* args)
  */
 static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
 {
-    Py_RETURN_NONE;
+    CHECK_CLIENT_AND_RECREATE_IT()
+
+    ClassProp* ue_class = NULL;
+    PyObject* object = NULL;
+    PyObject* property_value = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO!O!", &object, &ClassProp_Type, &ue_class, &property_value)) {
+        return NULL;
+    }
+
+    auto set_property_request = ue_core_client->client.setPropertyRequest();
+    set_property_request.initUeClass().setTypeName(ue_class->type_name);
+    set_property_request.initOwner().setAddress(reinterpret_cast<uint64_t>(object));
+    auto unreal_core_argument = set_property_request.initProperty();
+    if (!CreateUnrealCoreArgument(property_value, unreal_core_argument)) {
+        PyErr_SetString(PyExc_TypeError, "Failed to create unreal core argument the property should be argument type");
+        return NULL;
+    }
+
+    kj::WaitScope& wait_scope = io_context.waitScope;
+    CATCH_EXCEPTION_FOR_RPC_CALL({
+        set_property_request.send().wait(wait_scope);
+    })
 }
 
 static PyObject* unreal_core_find_class(PyObject* self, PyObject* args)
@@ -914,6 +951,8 @@ static PyMethodDef unreal_core_methods[] = {
     {"destory_object", unreal_core_destory_object, METH_VARARGS, "Destory a unreal object"},
     {"call_function", unreal_core_call_function, METH_VARARGS, "Call a function"},
     {"call_static_function", unreal_core_call_static_function, METH_VARARGS, "Call a static function"},
+    {"get_property", unreal_core_get_property, METH_VARARGS, "Get a property"},
+    {"set_property", unreal_core_set_property, METH_VARARGS, "Set a property"},
     {NULL, NULL, 0, NULL}
 };
 
