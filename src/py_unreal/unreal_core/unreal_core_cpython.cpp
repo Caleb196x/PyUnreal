@@ -5,7 +5,7 @@
 #include <windows.h>
 #include <exception>
 #include <cstring>
-
+#include <string>
 
 #define CHECK_CLIENT_AND_RECREATE_IT() \
     if (ue_core_client == NULL) { \
@@ -141,69 +141,94 @@ static CapnpClient* create_ue_core_client()
  */
 typedef struct {
     PyObject_HEAD
-    const char* name;
+    char* name;
     uint64_t address;
 } UnrealObject;
 
 static PyObject* UnrealObject_repr(UnrealObject* self)
 {
+    printf("UnrealObject_repr");
     if (self->name == NULL) {
         return PyUnicode_FromFormat("UnrealObject(name=NULL)");
     }
-    return PyUnicode_FromFormat("UnrealObject(name=%s)", self->name);
+    return PyUnicode_FromFormat("UnrealObject(name=%s, address=0x%016llx)", self->name, self->address);
 }
 
 static int UnrealObject_init(UnrealObject* self, PyObject* args)
 {
-    char* name = NULL;
+    const char* name = NULL;
     uint64_t address = 0;
+    printf("get addr %d\n", address);
 
     if (!PyArg_ParseTuple(args, "K|s", &address, &name)) {
         return -1;
     }
-    self->name = name;
-    self->address = address;
+    
+    if (name != NULL) {
+        self->name = (char*)malloc(strlen(name));
+        strcpy(self->name, name);
+    }
 
+    self->address = address;
     return 0;
+}
+
+static PyObject* UnrealObject_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    printf("call UnrealObject_new");
+    UnrealObject* self = (UnrealObject*)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->name = "";
+        self->address = 0;
+    }
+    return (PyObject*)self;
+}
+
+static void UnrealObject_dealloc(UnrealObject* self)
+{
+    if (self->name != NULL) free(self->name);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyTypeObject UnrealObject_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "unreal_core.Object",           /* tp_name */
-    sizeof(UnrealObject),                 /* tp_basicsize */
-    0,                             /* tp_itemsize */
-    0,                             /* tp_dealloc */
-    0,                             /* tp_print */
-    0,                             /* tp_getattr */
-    0,                             /* tp_setattr */
-    0,                             /* tp_reserved */
-    (reprfunc)UnrealObject_repr,         /* tp_repr */
-    0,                             /* tp_as_number */
-    0,                             /* tp_as_sequence */
-    0,                             /* tp_as_mapping */
-    0,                             /* tp_hash */
-    0,                             /* tp_call */
-    0,                             /* tp_str */
-    0,                             /* tp_getattro */
-    0,                             /* tp_setattro */
-    0,                             /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,           /* tp_flags */
-    "Unreal Engine Object",        /* tp_doc */
-    0,                             /* tp_traverse */
-    0,                             /* tp_clear */
-    0,                             /* tp_richcompare */
-    0,                             /* tp_weaklistoffset */
-    0,                             /* tp_iter */
-    0,                             /* tp_iternext */
-    0,                             /* tp_methods */
-    0,                             /* tp_members */
-    0,                             /* tp_getset */
-    0,                             /* tp_base */
-    0,                             /* tp_dict */
-    0,                             /* tp_descr_get */
-    0,                             /* tp_descr_set */
-    0,                             /* tp_dictoffset */
-    (initproc)UnrealObject_init,         /* tp_init */
+    "unreal_core.UnrealObject",        /* tp_name */
+    sizeof(UnrealObject),              /* tp_basicsize */
+    0,                                 /* tp_itemsize */
+    0, //(destructor)UnrealObject_dealloc,  /* tp_dealloc */
+    0,                                 /* tp_print */
+    0,                                 /* tp_getattr */
+    0,                                 /* tp_setattr */
+    0,                                 /* tp_reserved */
+    (reprfunc)UnrealObject_repr,       /* tp_repr */
+    0,                                 /* tp_as_number */
+    0,                                 /* tp_as_sequence */
+    0,                                 /* tp_as_mapping */
+    0,                                 /* tp_hash */
+    0,                                 /* tp_call */
+    0,                                 /* tp_str */
+    0,                                 /* tp_getattro */
+    0,                                 /* tp_setattro */
+    0,                                 /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT,                 /* tp_flags */
+    "Unreal Engine Object",            /* tp_doc */
+    0,                                 /* tp_traverse */
+    0,                                 /* tp_clear */
+    0,                                 /* tp_richcompare */
+    0,                                 /* tp_weaklistoffset */
+    0,                                 /* tp_iter */
+    0,                                 /* tp_iternext */
+    0,                                 /* tp_methods */
+    0,                                 /* tp_members */
+    0,                                 /* tp_getset */
+    0,                                 /* tp_base */
+    0,                                 /* tp_dict */
+    0,                                 /* tp_descr_get */
+    0,                                 /* tp_descr_set */
+    0,                                 /* tp_dictoffset */
+    (initproc)UnrealObject_init,       /* tp_init */
+    0,                                 /* tp_alloc */
+    UnrealObject_new,                  /* tp_new */
 };
 
 /*
@@ -211,12 +236,12 @@ static PyTypeObject UnrealObject_Type = {
  */
 typedef struct {
     PyObject_HEAD
-    const char* type_name;
+    std::string type_name;
 } ClassProp;
 
 static PyObject* ClassProp_repr(ClassProp* self)
 {
-    if (self->type_name == NULL) {
+    if (self->type_name.empty()) {
         return PyUnicode_FromFormat("Class(type_name=NULL)");
     }
 
@@ -225,14 +250,26 @@ static PyObject* ClassProp_repr(ClassProp* self)
 
 static int ClassProp_init(ClassProp* self, PyObject* args, PyObject* kwargs)
 {
-    char* type_name = NULL;
+    const char* type_name = NULL;
 
     if (!PyArg_ParseTuple(args, "s", &type_name)) {
         return -1;
     }
 
-    self->type_name = type_name;
+    self->type_name = std::move(std::string(type_name));
     return 0;
+}
+
+static PyObject* ClassProp_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
+    ClassProp* self = (ClassProp*)type->tp_alloc(type, 0);
+    return (PyObject*)self;
+}
+
+static void ClassProp_dealloc(ClassProp* self) {
+    // 清理 std::string
+    printf("clear class prop");
+    self->type_name.~basic_string();
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyTypeObject ClassProp_Type = {
@@ -240,7 +277,7 @@ static PyTypeObject ClassProp_Type = {
     "unreal_core.ClassProp",           /* tp_name */
     sizeof(ClassProp),                 /* tp_basicsize */
     0,                             /* tp_itemsize */
-    0,                             /* tp_dealloc */
+    (destructor)ClassProp_dealloc,     /* tp_dealloc */
     0,                             /* tp_print */
     0,                             /* tp_getattr */
     0,                             /* tp_setattr */
@@ -255,8 +292,8 @@ static PyTypeObject ClassProp_Type = {
     0,                             /* tp_getattro */
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,           /* tp_flags */
-    "Unreal Engine Class Property",        /* tp_doc */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
+    "Unreal Engine Class Property",    /* tp_doc */
     0,                             /* tp_traverse */
     0,                             /* tp_clear */
     0,                             /* tp_richcompare */
@@ -272,6 +309,8 @@ static PyTypeObject ClassProp_Type = {
     0,                             /* tp_descr_set */
     0,                             /* tp_dictoffset */
     (initproc)ClassProp_init,         /* tp_init */
+    0,                             /* tp_alloc */
+    ClassProp_new,                 /* tp_new */
 };
 
 /*
@@ -322,7 +361,7 @@ static int Argument_init(Argument* self, PyObject* args, PyObject* kwargs)
         return -1;
     }
 
-    if (ue_class->type_name == NULL) {
+    if (ue_class->type_name.empty()) {
         PyErr_SetString(PyExc_TypeError, "ue_class is not initialized");
         return -1;
     }
@@ -362,6 +401,25 @@ static int Argument_init(Argument* self, PyObject* args, PyObject* kwargs)
     return 0;
 }
 
+static PyObject* Argument_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    Argument* self;
+    self = (Argument*)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->name = NULL;
+        self->ue_class = NULL;
+        self->value_type = ARGUMENT_TYPE_BOOL;
+        self->bool_value = false;
+        self->uint_value = 0;
+        self->float_value = 0.0;
+        self->str_value = NULL;
+        self->enum_value = 0;
+        self->object = NULL;
+    }
+    return (PyObject*)self;
+}
+
+
 static PyTypeObject Argument_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "unreal_core.Argument",           /* tp_name */
@@ -382,7 +440,7 @@ static PyTypeObject Argument_Type = {
     0,                             /* tp_getattro */
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,           /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,           /* tp_flags */
     "Unreal Engine Argument",        /* tp_doc */
     0,                             /* tp_traverse */
     0,                             /* tp_clear */
@@ -399,6 +457,8 @@ static PyTypeObject Argument_Type = {
     0,                             /* tp_descr_set */
     0,                             /* tp_dictoffset */
     (initproc)Argument_init,         /* tp_init */
+    0,
+    Argument_new
 };
 
 typedef struct {
@@ -466,6 +526,13 @@ static PyTypeObject Method_Type = {
 /**
  * Utils functions
  */
+static inline char* deep_copy_str(const char* src)
+{
+    char* dest = (char*)malloc(strlen(src));
+    strcpy(dest, src);
+    return dest;
+}
+
 static bool CreateUnrealCoreArgument(PyObject* py_argument, UnrealCore::Argument::Builder& unreal_core_argument)
 {
     if (PyObject_TypeCheck(py_argument, &Argument_Type)) {
@@ -527,9 +594,9 @@ static bool SetupArguments(PyObject* src_args, capnp::List<UnrealCore::Argument,
         else {
             return false;
         }
-        
-        return true;
     }
+
+    return true;
 }
 
 /**
@@ -560,6 +627,12 @@ static PyObject* unreal_core_new_object(PyObject* self, PyObject* args)
         return NULL;
     }
 
+    // if (object == Py_None)
+    // {
+    //     PyErr_SetString(PyExc_RuntimeError, "object can not be None.");
+    //     return NULL;
+    // }
+
     UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
 
     capnp::Request<UnrealCore::NewObjectParams, UnrealCore::NewObjectResults> new_object_request = client.newObjectRequest();
@@ -585,10 +658,11 @@ static PyObject* unreal_core_new_object(PyObject* self, PyObject* args)
         capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().wait(wait_scope);
         
         UnrealObject* unreal_object = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type);
-        unreal_object->name = result.getObject().getName().cStr();
         unreal_object->address = result.getObject().getAddress();
+        unreal_object->name = deep_copy_str(result.getObject().getName().cStr());
 
         return (PyObject*)unreal_object;
+
     })
 }
 
@@ -720,7 +794,7 @@ static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reade
                 obj = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type); // try again
             }
             obj->address = return_value.getObject().getAddress();
-            obj->name = return_value.getObject().getName().cStr();
+            obj->name = deep_copy_str(return_value.getObject().getName().cStr());
             PyObject* py_object = CreateObjectFromSpecifiedClass(class_type_name);
             if (py_object == NULL) {
                 return NULL;
@@ -1056,9 +1130,29 @@ PyMODINIT_FUNC PyInit_unreal_core(void)
     Py_INCREF(&Argument_Type);
     Py_INCREF(&Method_Type);
 
-    PyModule_AddObject(m, "ClassProp", (PyObject*)&ClassProp_Type);
-    PyModule_AddObject(m, "Argument", (PyObject*)&Argument_Type);
-    PyModule_AddObject(m, "Method", (PyObject*)&Method_Type);
-    PyModule_AddObject(m, "UnrealObject", (PyObject*)&UnrealObject_Type);
+    if (PyModule_AddObject(m, "ClassProp", (PyObject*)&ClassProp_Type) < 0) {
+        Py_DECREF(&ClassProp_Type);
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    if (PyModule_AddObject(m, "Argument", (PyObject*)&Argument_Type) < 0) {
+        Py_DECREF(&Argument_Type);
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    if (PyModule_AddObject(m, "Method", (PyObject*)&Method_Type) < 0) {
+        Py_DECREF(&Argument_Type);
+        Py_DECREF(m);
+        return NULL;
+    }
+    
+    if (PyModule_AddObject(m, "UnrealObject", (PyObject*)&UnrealObject_Type) < 0) {
+        Py_DECREF(&Argument_Type);
+        Py_DECREF(m);
+        return NULL;
+    }
+    
     return m;
 }
