@@ -3,6 +3,8 @@
 #include <kj/async-io.h>
 #include <capnp/rpc-twoparty.h>
 #include <windows.h>
+#include <exception>
+#include <cstring>
 
 
 #define CHECK_CLIENT_AND_RECREATE_IT() \
@@ -36,13 +38,36 @@
  * capnp client
  */
 typedef struct {
-    UnrealCore::Client client;
     const char* name;
+    kj::Own<kj::AsyncIoStream> connection;
+    kj::Own<capnp::TwoPartyClient> client;
 } CapnpClient;
+
+static PyTypeObject CapnpClient_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+};
 
 static CapnpClient* ue_core_client = NULL;
 static kj::AsyncIoContext io_context = kj::setupAsyncIo();
 static uint16_t server_port = 0;
+
+static const char* format_win_characters(const char* message)
+{
+#ifdef _WIN32
+                // On Windows, convert to wide string and back to handle encoding
+                int wide_size = MultiByteToWideChar(CP_UTF8, 0, message, -1, NULL, 0);
+                wchar_t* wide_str = new wchar_t[wide_size];
+                MultiByteToWideChar(CP_UTF8, 0, message, -1, wide_str, wide_size);
+                
+                int ansi_size = WideCharToMultiByte(CP_ACP, 0, wide_str, -1, NULL, 0, NULL, NULL);
+                char* ansi_str = new char[ansi_size];
+                WideCharToMultiByte(CP_ACP, 0, wide_str, -1, ansi_str, ansi_size, NULL, NULL);
+                
+                delete[] wide_str;
+                message = ansi_str;
+#endif
+    return message;
+}
 
 static CapnpClient* create_ue_core_client()
 {
@@ -51,11 +76,15 @@ static CapnpClient* create_ue_core_client()
         return NULL;
     }
 
+    std::memset(rpc_client, 0, sizeof(CapnpClient));
+
     rpc_client->name = "unreal_core_client";
     kj::Network& network = io_context.provider->getNetwork();
     auto& wait_scope = io_context.waitScope;
     uint16_t start_port = 60001;
     uint16_t end_port = 60010;
+
+    // find the right port from 60001 to 60010
     for (uint16_t port = start_port; port <= end_port; ++port) {
         char ip_addr[20];
         sprintf(ip_addr, "127.0.0.1:%d", port);
@@ -63,26 +92,37 @@ static CapnpClient* create_ue_core_client()
         try{
             kj::Own<kj::NetworkAddress> address = network.parseAddress(ip_addr).wait(wait_scope);
             kj::Own<kj::AsyncIoStream> conn = address->connect().wait(wait_scope);
-            capnp::TwoPartyClient client(*conn);
-            rpc_client->client = client.bootstrap().castAs<UnrealCore>();
+            if (conn.get() == nullptr) {
+                continue;
+            }
+
+            // save connection
+            rpc_client->connection = kj::mv(conn);
+
+            // create and save rpc client
+            rpc_client->client = kj::heap<capnp::TwoPartyClient>(*rpc_client->connection);
+
             server_port = port;
+
+            printf("connect to rpc server: %s success\n", ip_addr);
+
             break;
+            
         } catch (kj::Exception& e) {
             const char* err_desc = e.getDescription().cStr();
-            #ifdef _WIN32
+#ifdef _WIN32
                 // On Windows, convert to wide string and back to handle encoding
-                int wide_size = MultiByteToWideChar(CP_UTF8, 0, err_desc, -1, NULL, 0);
-                wchar_t* wide_str = new wchar_t[wide_size];
-                MultiByteToWideChar(CP_UTF8, 0, err_desc, -1, wide_str, wide_size);
-                
-                int ansi_size = WideCharToMultiByte(CP_ACP, 0, wide_str, -1, NULL, 0, NULL, NULL);
-                char* ansi_str = new char[ansi_size];
-                WideCharToMultiByte(CP_ACP, 0, wide_str, -1, ansi_str, ansi_size, NULL, NULL);
-                
-                delete[] wide_str;
-                err_desc = ansi_str;
-            #endif
-            printf("connect to %s failed, error: %s, try next port\n", ip_addr, err_desc);
+                const char* formatted_desc = format_win_characters(err_desc);
+#endif
+            printf("connect to %s failed, error: %s, try next port\n", ip_addr, formatted_desc);
+            delete[] formatted_desc;
+            
+            continue;
+
+        } catch (std::exception& e) {
+            printf("connect to %s failed, error: %s\n", ip_addr, e.what());
+
+            break;
         }
     }
 
@@ -197,7 +237,7 @@ static int ClassProp_init(ClassProp* self, PyObject* args, PyObject* kwargs)
 
 static PyTypeObject ClassProp_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "unreal_core.Class",           /* tp_name */
+    "unreal_core.ClassProp",           /* tp_name */
     sizeof(ClassProp),                 /* tp_basicsize */
     0,                             /* tp_itemsize */
     0,                             /* tp_dealloc */
@@ -216,7 +256,7 @@ static PyTypeObject ClassProp_Type = {
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,           /* tp_flags */
-    "Unreal Engine Class",        /* tp_doc */
+    "Unreal Engine Class Property",        /* tp_doc */
     0,                             /* tp_traverse */
     0,                             /* tp_clear */
     0,                             /* tp_richcompare */
@@ -520,7 +560,9 @@ static PyObject* unreal_core_new_object(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    capnp::Request<UnrealCore::NewObjectParams, UnrealCore::NewObjectResults> new_object_request = ue_core_client->client.newObjectRequest();
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+
+    capnp::Request<UnrealCore::NewObjectParams, UnrealCore::NewObjectResults> new_object_request = client.newObjectRequest();
     new_object_request.getUeClass().setTypeName(ue_class->type_name);
     new_object_request.setFlags(flags);
     new_object_request.setObjName(object_name);
@@ -569,7 +611,8 @@ static PyObject* unreal_core_destory_object(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    auto destory_object_request = ue_core_client->client.destroyObjectRequest();
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+    auto destory_object_request = client.destroyObjectRequest();
     destory_object_request.initOwn().setAddress(reinterpret_cast<uint64_t>(object));
 
     kj::WaitScope& wait_scope = io_context.waitScope;
@@ -618,7 +661,8 @@ static PyObject* CreateObjectFromSpecifiedClass(const char* class_type_name)
 
 static PyObject* SendPyObjectToUnrealEngine(PyObject* py_object, UnrealObject* unreal_object, const char* class_type_name)
 {
-    auto create_py_object_request = ue_core_client->client.registerCreatedPyObjectRequest();
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+    auto create_py_object_request = client.registerCreatedPyObjectRequest();
     create_py_object_request.initPyObject().setAddress(reinterpret_cast<uint64_t>(py_object));
     create_py_object_request.initUnrealObject().setAddress(unreal_object->address);
     create_py_object_request.initUeClass().setTypeName(class_type_name);
@@ -733,7 +777,8 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    auto call_function_request = ue_core_client->client.callFunctionRequest();
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+    auto call_function_request = client.callFunctionRequest();
     call_function_request.initOwn().setAddress(reinterpret_cast<uint64_t>(object));
     call_function_request.initUeClass().setTypeName(ue_class->type_name);
 
@@ -804,7 +849,8 @@ static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args
         return NULL;
     }
 
-    auto call_static_function_request = ue_core_client->client.callStaticFunctionRequest();
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+    auto call_static_function_request = client.callStaticFunctionRequest();
     call_static_function_request.initUeClass().setTypeName(ue_class->type_name);
 
     call_static_function_request.setFuncName(function_name);
@@ -868,7 +914,8 @@ static PyObject* unreal_core_get_property(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    auto get_property_request = ue_core_client->client.getPropertyRequest();
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+    auto get_property_request = client.getPropertyRequest();
     get_property_request.initUeClass().setTypeName(ue_class->type_name);
     get_property_request.initOwner().setAddress(reinterpret_cast<uint64_t>(object));
     get_property_request.setPropertyName(property_name);
@@ -901,7 +948,8 @@ static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
         return NULL;
     }
 
-    auto set_property_request = ue_core_client->client.setPropertyRequest();
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+    auto set_property_request = client.setPropertyRequest();
     set_property_request.initUeClass().setTypeName(ue_class->type_name);
     set_property_request.initOwner().setAddress(reinterpret_cast<uint64_t>(object));
     auto unreal_core_argument = set_property_request.initProperty();
@@ -1003,13 +1051,14 @@ PyMODINIT_FUNC PyInit_unreal_core(void)
         return NULL;
     }
 
+    Py_INCREF(&UnrealObject_Type);
     Py_INCREF(&ClassProp_Type);
     Py_INCREF(&Argument_Type);
     Py_INCREF(&Method_Type);
 
-    PyModule_AddObject(m, "Class", (PyObject*)&ClassProp_Type);
+    PyModule_AddObject(m, "ClassProp", (PyObject*)&ClassProp_Type);
     PyModule_AddObject(m, "Argument", (PyObject*)&Argument_Type);
     PyModule_AddObject(m, "Method", (PyObject*)&Method_Type);
-
+    PyModule_AddObject(m, "UnrealObject", (PyObject*)&UnrealObject_Type);
     return m;
 }

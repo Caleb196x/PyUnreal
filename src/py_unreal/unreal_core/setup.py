@@ -37,6 +37,23 @@ elif is_linux:
 elif is_mac:
     libraries.extend(['capnp', 'capnpc',  'capnp-rpc',  'capnp-json', 'capnp-websocket', 'kj', 'kj-http', 'kj-async', 'kj-test'])
 
+# Set compiler flags
+extra_compile_args = []
+
+if is_windows:
+    extra_compile_args.extend([
+        '/EHsc',      # Enable C++ exception handling
+        '/GR',        # Enable RTTI
+        '/MD',        # Use dynamic runtime library
+        '/std:c++17'  # Use C++17 standard
+    ])
+else:  # Linux and macOS
+    extra_compile_args.extend([
+        '-std=c++17',
+        '-frtti',     # Enable RTTI
+        '-fexceptions'  # Enable exception handling
+    ])
+
 # Define the extension module
 unreal_core = Extension(
     'unreal_core',
@@ -44,6 +61,7 @@ unreal_core = Extension(
     include_dirs=include_dirs,
     library_dirs=library_dirs,
     libraries=libraries,
+    extra_compile_args=extra_compile_args,
     language='c++'
 )
 
