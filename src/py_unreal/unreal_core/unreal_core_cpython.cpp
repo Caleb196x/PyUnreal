@@ -34,6 +34,17 @@
 #define PYTHON_MODULE_NAME "py_unreal"
 #define UNREAD_OBJECT_PROPERTY_NAME "unreal_object"
 
+
+/**
+ * Utils functions
+ */
+static inline char* deep_copy_str(const char* src)
+{
+    char* dest = (char*)malloc(strlen(src));
+    strcpy(dest, src);
+    return dest;
+}
+
 /**
  * capnp client
  */
@@ -163,8 +174,7 @@ static int UnrealObject_init(UnrealObject* self, PyObject* args)
     }
     
     if (name != NULL) {
-        self->name = (char*)malloc(strlen(name));
-        strcpy(self->name, name);
+        self->name = deep_copy_str(name);
     }
 
     self->address = address;
@@ -316,20 +326,22 @@ static PyTypeObject ClassProp_Type = {
 typedef enum {
     ARGUMENT_TYPE_BOOL = 0,
     ARGUMENT_TYPE_UINT = 1,
-    ARGUMENT_TYPE_FLOAT = 2,
-    ARGUMENT_TYPE_STRING = 3,
-    ARGUMENT_TYPE_ENUM = 4,
-    ARGUMENT_TYPE_OBJECT = 5,
+    ARGUMENT_TYPE_INT = 2,
+    ARGUMENT_TYPE_FLOAT = 3,
+    ARGUMENT_TYPE_STRING = 4,
+    ARGUMENT_TYPE_ENUM = 5,
+    ARGUMENT_TYPE_OBJECT = 6,
 } ArgumentType;
 
 typedef struct {
     PyObject_HEAD
     ClassProp* ue_class;
-    const char* name;
+    std::string name;
     ArgumentType value_type;
     union {
         bool bool_value;
         uint64_t uint_value;
+        int64_t int_value;
         double float_value;
         const char* str_value;
         int64_t enum_value;
@@ -339,18 +351,38 @@ typedef struct {
 
 static PyObject* Argument_repr(Argument* self)
 {
-    if (self->name == NULL) {
-        return PyUnicode_FromFormat("Argument(name=NULL)");
+    switch (self->value_type) {
+        case ARGUMENT_TYPE_BOOL:
+            return PyUnicode_FromFormat("Argument(name=%s, ue_class=%s, value_type=%d, bool_value=%d)", 
+                self->name, self->ue_class->type_name.c_str(), self->value_type, self->bool_value);
+        case ARGUMENT_TYPE_UINT:
+            return PyUnicode_FromFormat("Argument(name=%s, ue_class=%s, value_type=%d, uint_value=%lld)", 
+                self->name, self->ue_class->type_name.c_str(), self->value_type, self->uint_value);
+        case ARGUMENT_TYPE_INT:
+            return PyUnicode_FromFormat("Argument(name=%s, ue_class=%s, value_type=%d, int_value=%lld)", 
+                self->name, self->ue_class->type_name.c_str(), self->value_type, self->int_value);
+        case ARGUMENT_TYPE_FLOAT:
+            return PyUnicode_FromFormat("Argument(name=%s, ue_class=%s, value_type=%d, float_value=%f)", 
+                self->name, self->ue_class->type_name.c_str(), self->value_type, self->float_value);
+        case ARGUMENT_TYPE_STRING:
+            return PyUnicode_FromFormat("Argument(name=%s, ue_class=%s, value_type=%d, str_value=%s)", 
+                self->name, self->ue_class->type_name.c_str(), self->value_type, self->str_value);
+        case ARGUMENT_TYPE_ENUM:
+            return PyUnicode_FromFormat("Argument(name=%s, ue_class=%s, value_type=%d, enum_value=%lld)", 
+                self->name, self->ue_class->type_name.c_str(), self->value_type, self->enum_value);
+        case ARGUMENT_TYPE_OBJECT:
+            return PyUnicode_FromFormat("Argument(name=%s, ue_class=%s, value_type=%d, object=0x%llx)", 
+                self->name, self->ue_class->type_name.c_str(), self->value_type, self->object); 
     }
-    return PyUnicode_FromFormat("Argument(name=%s)", self->name);
 }
 
-static int Argument_init(Argument* self, PyObject* args, PyObject* kwargs)
+static int Argument_init(Argument* self, PyObject* args)
 {
     char* name = NULL;    
     ClassProp* ue_class = NULL;
     PyObject* value = NULL;
-    if (!PyArg_ParseTuple(args, "sO!O", &name, &ClassProp_Type, &ue_class, &value)) {
+    char* value_type = NULL;
+    if (!PyArg_ParseTuple(args, "sO!O|s", &name, &ClassProp_Type, &ue_class, &value, &value_type)) {
         return -1;
     }
     if (ue_class == NULL) {
@@ -363,36 +395,39 @@ static int Argument_init(Argument* self, PyObject* args, PyObject* kwargs)
         return -1;
     }
 
-    self->name = name;
+    self->name = std::move(std::string(name));
     self->ue_class = ue_class;
-    
-    if (value != NULL && PyBool_Check(value)) {
+
+    if (value == NULL) {
+        return 0;
+    }
+
+    if (PyBool_Check(value))
+    {
         self->value_type = ARGUMENT_TYPE_BOOL;
         self->bool_value = PyObject_IsTrue(value);
     }
-    else if (value != NULL && PyLong_Check(value)) {
-        self->value_type = ARGUMENT_TYPE_UINT;
-        self->uint_value = PyLong_AsUnsignedLongLong(value);
+    else if (PyLong_Check(value)) {
+        if (value_type != NULL && strcmp(value_type, "enum") == 0) {
+            self->value_type = ARGUMENT_TYPE_ENUM;     
+            self->enum_value = PyLong_AsLongLong(value);   
+        }
+        else {
+            self->value_type = ARGUMENT_TYPE_INT;
+        }
+        self->int_value = PyLong_AsLongLong(value);    
     }
-    else if (value != NULL && PyFloat_Check(value)) {
+    else if (PyFloat_Check(value)) {
         self->value_type = ARGUMENT_TYPE_FLOAT;
         self->float_value = PyFloat_AsDouble(value);
     }
-    else if (value != NULL && PyUnicode_Check(value)) {
+    else if (PyUnicode_Check(value)) {
         self->value_type = ARGUMENT_TYPE_STRING;
-        self->str_value = PyUnicode_AsUTF8(value);
-    }
-    else if (value != NULL && PyLong_Check(value)) {
-        self->value_type = ARGUMENT_TYPE_ENUM;
-        self->enum_value = PyLong_AsLongLong(value);
-    }
-    else if (value != NULL) {
-        self->value_type = ARGUMENT_TYPE_OBJECT;
-        self->object = value;
     }
     else {
-        PyErr_SetString(PyExc_TypeError, "Invalid argument type");
-        return -1;
+        // todo@Caleb196x: implement special type such as list, set or map
+        self->value_type = ARGUMENT_TYPE_OBJECT;
+        self->object = value;
     }
 
     return 0;
@@ -403,7 +438,7 @@ static PyObject* Argument_new(PyTypeObject* type, PyObject* args, PyObject* kwds
     Argument* self;
     self = (Argument*)type->tp_alloc(type, 0);
     if (self != NULL) {
-        self->name = NULL;
+        self->name = "";
         self->ue_class = NULL;
         self->value_type = ARGUMENT_TYPE_BOOL;
         self->bool_value = false;
@@ -416,13 +451,24 @@ static PyObject* Argument_new(PyTypeObject* type, PyObject* args, PyObject* kwds
     return (PyObject*)self;
 }
 
+static void Argument_dealloc(Argument* self)
+{
+    printf("Argument_dealloc\n");
+    if (self->value_type == ARGUMENT_TYPE_OBJECT)
+    {
+        Py_DECREF(self->object);
+    }
+
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
 
 static PyTypeObject Argument_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "unreal_core.Argument",           /* tp_name */
     sizeof(Argument),                 /* tp_basicsize */
     0,                             /* tp_itemsize */
-    0,                             /* tp_dealloc */
+    (destructor)Argument_dealloc,  /* tp_dealloc */
     0,                             /* tp_print */
     0,                             /* tp_getattr */
     0,                             /* tp_setattr */
@@ -520,19 +566,9 @@ static PyTypeObject Method_Type = {
     (initproc)Method_init,         /* tp_init */
 };
 
-/**
- * Utils functions
- */
-static inline char* deep_copy_str(const char* src)
+static bool create_unreal_rpc_argument(PyObject* py_argument, UnrealCore::Argument::Builder& unreal_core_argument)
 {
-    char* dest = (char*)malloc(strlen(src));
-    strcpy(dest, src);
-    return dest;
-}
-
-static bool CreateUnrealCoreArgument(PyObject* py_argument, UnrealCore::Argument::Builder& unreal_core_argument)
-{
-    if (PyObject_TypeCheck(py_argument, &Argument_Type)) {
+    if (!PyObject_TypeCheck(py_argument, &Argument_Type)) {
         return false;
     }
 
@@ -543,6 +579,9 @@ static bool CreateUnrealCoreArgument(PyObject* py_argument, UnrealCore::Argument
     switch (argument->value_type) {
         case ARGUMENT_TYPE_BOOL:
             unreal_core_argument.setBoolValue(argument->bool_value);
+            break;
+        case ARGUMENT_TYPE_INT:
+            unreal_core_argument.setIntValue(argument->int_value);
             break;
         case ARGUMENT_TYPE_UINT:
             unreal_core_argument.setUintValue(argument->uint_value);
@@ -563,7 +602,6 @@ static bool CreateUnrealCoreArgument(PyObject* py_argument, UnrealCore::Argument
         }
         default:
         {
-            PyErr_SetString(PyExc_TypeError, "Invalid argument type");
             return false;
         }
     }
@@ -571,11 +609,12 @@ static bool CreateUnrealCoreArgument(PyObject* py_argument, UnrealCore::Argument
 }
 
 
-static bool SetupArguments(PyObject* src_args, capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder& dest_args, Py_ssize_t list_size)
+static bool setup_unreal_rpc_arguments_from_list(PyObject* src_args, capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder& dest_args, Py_ssize_t list_size)
 {
     for (uint32_t i = 0; i < list_size; i++) {
         PyObject* item = PyList_GetItem(src_args, i);
         if (item == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to get a parameter from the parameter list.");
             return false;
         }
 
@@ -584,11 +623,13 @@ static bool SetupArguments(PyObject* src_args, capnp::List<UnrealCore::Argument,
             dest_args[i].setName(argument->name);
             dest_args[i].initUeClass().setTypeName(argument->ue_class->type_name);
 
-            if (!CreateUnrealCoreArgument(item, dest_args[i])) {
+            if (!create_unreal_rpc_argument(item, dest_args[i])) {
+                PyErr_SetString(PyExc_RuntimeError, "Failure to create parameters needed for unreal rpc call.");
                 return false;
             }
         }
         else {
+            PyErr_SetString(PyExc_RuntimeError, "The type of the argument passed into the function must be the 'Argument' type.");
             return false;
         }
     }
@@ -644,9 +685,8 @@ static PyObject* unreal_core_new_object(PyObject* self, PyObject* args)
     Py_ssize_t list_size = PyList_Size(construct_args);
     capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder new_object_args = new_object_request.initConstructArgs(list_size);
 
-    if (!SetupArguments(construct_args, new_object_args, list_size))
+    if (!setup_unreal_rpc_arguments_from_list(construct_args, new_object_args, list_size))
     {
-        PyErr_SetString(PyExc_TypeError, "Parse construct args failed");
         return NULL;
     }
 
@@ -698,7 +738,7 @@ static PyObject* unreal_core_destory_object(PyObject* self, PyObject* args)
     })
 }
 
-static PyObject* CreateObjectFromSpecifiedClass(const char* class_type_name)
+static PyObject* create_object_from_specified_class(const char* class_type_name)
 {
     // PyObject* module_name = PyUnicode_FromString();
     PyObject* py_module = PyImport_ImportModule(PYTHON_MODULE_NAME); // todo: Compatible with other Python versions
@@ -730,7 +770,7 @@ static PyObject* CreateObjectFromSpecifiedClass(const char* class_type_name)
     return py_object;
 }
 
-static PyObject* SendPyObjectToUnrealEngine(PyObject* py_object, UnrealObject* unreal_object, const char* class_type_name)
+static PyObject* send_pyobject_to_unreal_engine(PyObject* py_object, UnrealObject* unreal_object, const char* class_type_name)
 {
     UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
     auto create_py_object_request = client.registerCreatedPyObjectRequest();
@@ -745,7 +785,7 @@ static PyObject* SendPyObjectToUnrealEngine(PyObject* py_object, UnrealObject* u
     })
 }
 
-static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reader& return_value, bool is_retrun_value)
+static PyObject* parse_value_from_function_return(const  UnrealCore::Argument::Reader& return_value, bool is_retrun_value)
 {
     // Initialize the object's fields
     const char* class_type_name = return_value.getUeClass().getTypeName().cStr();
@@ -767,6 +807,9 @@ static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reade
         }
         case UnrealCore::Argument::UINT_VALUE:
             return PyLong_FromUnsignedLongLong(return_value.getUintValue());
+        case UnrealCore::Argument::INT_VALUE:
+            printf("class_type_name: %s, value: %lld\n", class_type_name, return_value.getIntValue());
+            return PyLong_FromLongLong(return_value.getIntValue());
         case UnrealCore::Argument::FLOAT_VALUE:
             return PyFloat_FromDouble(return_value.getFloatValue());
         case UnrealCore::Argument::STR_VALUE:
@@ -792,7 +835,7 @@ static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reade
             }
             obj->address = return_value.getObject().getAddress();
             obj->name = deep_copy_str(return_value.getObject().getName().cStr());
-            PyObject* py_object = CreateObjectFromSpecifiedClass(class_type_name);
+            PyObject* py_object = create_object_from_specified_class(class_type_name);
             if (py_object == NULL) {
                 return NULL;
             }
@@ -804,7 +847,7 @@ static PyObject* ParseValueFromFunctionReturn(const  UnrealCore::Argument::Reade
             }
 
             // register the py object to unreal engine
-            SendPyObjectToUnrealEngine(py_object, obj, class_type_name);
+            send_pyobject_to_unreal_engine(py_object, obj, class_type_name);
 
             return py_object;
         }
@@ -863,9 +906,8 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
     Py_ssize_t list_size = PyList_Size(params);
     capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder call_function_args = call_function_request.initParams((uint32_t)list_size);
 
-    if (!SetupArguments(params, call_function_args, list_size))
+    if (!setup_unreal_rpc_arguments_from_list(params, call_function_args, list_size))
     {
-        PyErr_SetString(PyExc_TypeError, "Parse params failed");
         return NULL;
     }
 
@@ -873,7 +915,7 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
     CATCH_EXCEPTION_FOR_RPC_CALL({
         capnp::Response<UnrealCore::CallFunctionResults> result = call_function_request.send().wait(wait_scope);
         
-        PyObject* return_value = ParseValueFromFunctionReturn(result.getReturn(), true);
+        PyObject* return_value = parse_value_from_function_return(result.getReturn(), true);
         if (return_value == NULL) {
             return NULL; 
         }
@@ -882,13 +924,16 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
         auto out_params = result.getOutParams();
         auto out_params_size = out_params.size();
 
-        PyObject* tuple = PyTuple_New(out_params_size);
-        PyTuple_SET_ITEM(tuple, 0, return_value);
-        for (Py_ssize_t i = 0; i < out_params_size; i++) {
+        PyObject* tuple = PyTuple_New(out_params_size + 1);
+        PyTuple_SetItem(tuple, 0, return_value);
+
+        printf("out_params_size: %d\n", out_params_size);
+
+        for (Py_ssize_t i = 0; i < out_params_size; ++i) {
             // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
-            PyObject* out_param = ParseValueFromFunctionReturn(out_params[i], false); 
+            PyObject* out_param = parse_value_from_function_return(out_params[i], false); 
             
-            PyTuple_SET_ITEM(tuple, i + 1, out_param);
+            PyTuple_SetItem(tuple, i + 1, out_param);
         }
 
         return tuple; 
@@ -930,9 +975,8 @@ static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args
     Py_ssize_t list_size = PyList_Size(params);
     capnp::List<UnrealCore::Argument, capnp::Kind::STRUCT>::Builder call_function_args = call_static_function_request.initParams(list_size);
 
-    if (!SetupArguments(params, call_function_args, list_size))
+    if (!setup_unreal_rpc_arguments_from_list(params, call_function_args, list_size))
     {
-        PyErr_SetString(PyExc_TypeError, "Parse params failed");
         return NULL;
     }
 
@@ -940,7 +984,7 @@ static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args
     CATCH_EXCEPTION_FOR_RPC_CALL({
         capnp::Response<UnrealCore::CallStaticFunctionResults> result = call_static_function_request.send().wait(wait_scope);
         
-        PyObject* return_value = ParseValueFromFunctionReturn(result.getReturn(), true);
+        PyObject* return_value = parse_value_from_function_return(result.getReturn(), true);
         if (return_value == NULL) {
             return NULL; 
         }
@@ -953,7 +997,7 @@ static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args
         PyTuple_SET_ITEM(tuple, 0, return_value);
         for (Py_ssize_t i = 0; i < out_params_size; i++) {
             // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
-            PyObject* out_param = ParseValueFromFunctionReturn(out_params[i], false); 
+            PyObject* out_param = parse_value_from_function_return(out_params[i], false); 
             
             PyTuple_SET_ITEM(tuple, i + 1, out_param);
         }
@@ -994,7 +1038,7 @@ static PyObject* unreal_core_get_property(PyObject* self, PyObject* args)
     kj::WaitScope& wait_scope = io_context.waitScope;
     CATCH_EXCEPTION_FOR_RPC_CALL({
         capnp::Response<UnrealCore::GetPropertyResults> result = get_property_request.send().wait(wait_scope);
-        return ParseValueFromFunctionReturn(result.getProperty(), false);
+        return parse_value_from_function_return(result.getProperty(), false);
     })
 }
 
@@ -1024,7 +1068,7 @@ static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
     set_property_request.initUeClass().setTypeName(ue_class->type_name);
     set_property_request.initOwner().setAddress(reinterpret_cast<uint64_t>(object));
     auto unreal_core_argument = set_property_request.initProperty();
-    if (!CreateUnrealCoreArgument(property_value, unreal_core_argument)) {
+    if (!create_unreal_rpc_argument(property_value, unreal_core_argument)) {
         PyErr_SetString(PyExc_TypeError, "Failed to create unreal core argument the property should be argument type");
         return NULL;
     }
