@@ -147,7 +147,6 @@ typedef struct {
 
 static PyObject* UnrealObject_repr(UnrealObject* self)
 {
-    printf("UnrealObject_repr");
     if (self->name == NULL) {
         return PyUnicode_FromFormat("UnrealObject(name=NULL)");
     }
@@ -158,7 +157,6 @@ static int UnrealObject_init(UnrealObject* self, PyObject* args)
 {
     const char* name = NULL;
     uint64_t address = 0;
-    printf("get addr %d\n", address);
 
     if (!PyArg_ParseTuple(args, "K|s", &address, &name)) {
         return -1;
@@ -175,7 +173,6 @@ static int UnrealObject_init(UnrealObject* self, PyObject* args)
 
 static PyObject* UnrealObject_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
-    printf("call UnrealObject_new");
     UnrealObject* self = (UnrealObject*)type->tp_alloc(type, 0);
     if (self != NULL) {
         self->name = "";
@@ -195,7 +192,7 @@ static PyTypeObject UnrealObject_Type = {
     "unreal_core.UnrealObject",        /* tp_name */
     sizeof(UnrealObject),              /* tp_basicsize */
     0,                                 /* tp_itemsize */
-    0, //(destructor)UnrealObject_dealloc,  /* tp_dealloc */
+    (destructor)UnrealObject_dealloc,  /* tp_dealloc */
     0,                                 /* tp_print */
     0,                                 /* tp_getattr */
     0,                                 /* tp_setattr */
@@ -260,14 +257,14 @@ static int ClassProp_init(ClassProp* self, PyObject* args, PyObject* kwargs)
     return 0;
 }
 
-static PyObject* ClassProp_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
+static PyObject* ClassProp_new(PyTypeObject* type, PyObject* args, PyObject* kwds) 
+{
     ClassProp* self = (ClassProp*)type->tp_alloc(type, 0);
     return (PyObject*)self;
 }
 
-static void ClassProp_dealloc(ClassProp* self) {
-    // 清理 std::string
-    printf("clear class prop");
+static void ClassProp_dealloc(ClassProp* self) 
+{
     self->type_name.~basic_string();
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -1093,13 +1090,35 @@ static PyMethodDef unreal_core_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+static void clean_ue_core_client_inner()
+{
+    if (ue_core_client != NULL) {
+        kj::Own<capnp::TwoPartyClient> TMP_cleint = kj::mv(ue_core_client->client);
+        kj::Own<kj::AsyncIoStream> TMP_connection = kj::mv(ue_core_client->connection);
+        free(ue_core_client);
+        ue_core_client = NULL;
+    }
+
+}
+
+static int clean_ue_core_client(PyObject* module)
+{
+    clean_ue_core_client_inner();
+
+    return 0;
+}
+
 static struct PyModuleDef unreal_core_module = {
     PyModuleDef_HEAD_INIT,
     "unreal_core",
     "unreal engine core rpc framework apis",
     -1,
     unreal_core_methods,
+    0,
+    0,
+    clean_ue_core_client,
 };
+
 
 PyMODINIT_FUNC PyInit_unreal_core(void)
 {
@@ -1111,6 +1130,9 @@ PyMODINIT_FUNC PyInit_unreal_core(void)
         return NULL;
     }
     if (PyType_Ready(&Method_Type) < 0) {
+        return NULL;
+    }
+    if (PyType_Ready(&UnrealObject_Type) < 0) {
         return NULL;
     }
 
@@ -1125,7 +1147,7 @@ PyMODINIT_FUNC PyInit_unreal_core(void)
         return NULL;
     }
 
-    Py_INCREF(&UnrealObject_Type);
+    // Py_INCREF(&UnrealObject_Type);
     Py_INCREF(&ClassProp_Type);
     Py_INCREF(&Argument_Type);
     Py_INCREF(&Method_Type);
@@ -1153,6 +1175,8 @@ PyMODINIT_FUNC PyInit_unreal_core(void)
         Py_DECREF(m);
         return NULL;
     }
+
+    Py_AtExit(clean_ue_core_client_inner);
     
     return m;
 }
