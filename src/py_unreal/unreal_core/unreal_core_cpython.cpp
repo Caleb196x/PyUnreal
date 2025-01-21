@@ -386,12 +386,12 @@ static int Argument_init(Argument* self, PyObject* args)
         return -1;
     }
     if (ue_class == NULL) {
-        PyErr_SetString(PyExc_TypeError, "ue_class is required");
+        PyErr_SetString(PyExc_RuntimeError, "ue_class is required");
         return -1;
     }
 
     if (ue_class->type_name.empty()) {
-        PyErr_SetString(PyExc_TypeError, "ue_class is not initialized");
+        PyErr_SetString(PyExc_RuntimeError, "ue_class is not initialized");
         return -1;
     }
 
@@ -408,21 +408,32 @@ static int Argument_init(Argument* self, PyObject* args)
         self->bool_value = PyObject_IsTrue(value);
     }
     else if (PyLong_Check(value)) {
+
+        // special case: enum
         if (value_type != NULL && strcmp(value_type, "enum") == 0) {
             self->value_type = ARGUMENT_TYPE_ENUM;     
-            self->enum_value = PyLong_AsLongLong(value);   
+            self->enum_value = PyLong_AsLongLong(value); 
         }
         else {
             self->value_type = ARGUMENT_TYPE_INT;
+            self->int_value = PyLong_AsLongLong(value);    
         }
-        self->int_value = PyLong_AsLongLong(value);    
     }
     else if (PyFloat_Check(value)) {
-        self->value_type = ARGUMENT_TYPE_FLOAT;
-        self->float_value = PyFloat_AsDouble(value);
+
+        // special case: int
+        if (value_type != NULL && strcmp(value_type, "int") == 0) {
+            self->value_type = ARGUMENT_TYPE_INT;
+            self->int_value = PyLong_AsLong(PyNumber_Long(value)); // convert float to int
+        }
+        else {
+            self->value_type = ARGUMENT_TYPE_FLOAT;
+            self->float_value = PyFloat_AsDouble(value);
+        }
     }
     else if (PyUnicode_Check(value)) {
         self->value_type = ARGUMENT_TYPE_STRING;
+        self->str_value = PyUnicode_AsUTF8(value);
     }
     else {
         // todo@Caleb196x: implement special type such as list, set or map
@@ -925,6 +936,7 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
         auto out_params_size = out_params.size();
 
         PyObject* tuple = PyTuple_New(out_params_size + 1);
+        Py_DECREF(return_value);
         PyTuple_SetItem(tuple, 0, return_value);
 
         printf("out_params_size: %d\n", out_params_size);
@@ -932,7 +944,7 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
         for (Py_ssize_t i = 0; i < out_params_size; ++i) {
             // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
             PyObject* out_param = parse_value_from_function_return(out_params[i], false); 
-            
+            Py_DECREF(out_param);
             PyTuple_SetItem(tuple, i + 1, out_param);
         }
 
@@ -1014,7 +1026,7 @@ static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args
  * args:
  *   ue_class: ue class name
  *   object: pyobject
- *   property: struct Property
+ *   property_name: Property name
  * 
  */
 static PyObject* unreal_core_get_property(PyObject* self, PyObject* args)
@@ -1049,7 +1061,7 @@ static PyObject* unreal_core_get_property(PyObject* self, PyObject* args)
  * args:
  *   ue_class: ue class name
  *   object: pyobject
- *   property_name: str
+ *   property: struct Argument
  */
 static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
 {
@@ -1059,7 +1071,7 @@ static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
     PyObject* object = NULL;
     PyObject* property_value = NULL;
 
-    if (!PyArg_ParseTuple(args, "OO!O!", &object, &ClassProp_Type, &ue_class, &property_value)) {
+    if (!PyArg_ParseTuple(args, "OO!O!", &object, &ClassProp_Type, &ue_class, &Argument_Type, &property_value)) {
         return NULL;
     }
 
@@ -1069,7 +1081,7 @@ static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
     set_property_request.initOwner().setAddress(reinterpret_cast<uint64_t>(object));
     auto unreal_core_argument = set_property_request.initProperty();
     if (!create_unreal_rpc_argument(property_value, unreal_core_argument)) {
-        PyErr_SetString(PyExc_TypeError, "Failed to create unreal core argument the property should be argument type");
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create unreal core argument the property should be argument type");
         return NULL;
     }
 
