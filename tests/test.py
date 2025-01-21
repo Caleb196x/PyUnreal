@@ -9,10 +9,10 @@ class MyObject:
     def __init__(self) -> None:
         self._ue_class = ClassProp("MyObject")
         self._ue_obj = unreal_core.new_object(self, self._ue_class, "test", 0, [])
-        # print(self._ue_obj)
+        # print("MyObject object: ", hex(id(self)))
 
     def __del__(self):
-        print("destory object: ", hex(id(self)))
+        # print("destory object: ", hex(id(self)))
         unreal_core.destory_object(self)
 
     @property
@@ -25,6 +25,7 @@ class MyObject:
         return unreal_core.call_function(self, self._ue_obj, self._ue_class, "Add", [arg1, arg2])
     
     def TestVector(self, vector):
+        print("TestVector: ", hex(id(vector)))
         arg = Argument("Vector", self._ue_class, vector)
         return unreal_core.call_function(self, self._ue_obj, self._ue_class, "TestVector", [arg])
     
@@ -34,9 +35,10 @@ class Vector2D:
         arg1 = Argument("X", self._ue_class, X)
         arg2 = Argument("Y", self._ue_class, Y)
         self._ue_obj = unreal_core.new_object(self, self._ue_class, "test_vector", 0, [arg1, arg2])
+        # print("Vector2D object: ", hex(id(self)))
 
     def __del__(self):
-        print("destory object: ", hex(id(self)))
+        # print("destory object: ", hex(id(self)))
         unreal_core.destory_object(self)
 
     @property
@@ -63,17 +65,23 @@ class Vector2D:
 
 
 if __name__ == "__main__":
-    # vector = Vector2D(1.0, 2.0)
-    # print(vector.X)
-    # print(vector.Y)
-    # vector.X = 6.0
-    # vector.Y = 4.0
-    # print(vector.X)
-    # print(vector.Y)
+    vector = Vector2D(1.0, 2.0)
+    print(vector.X)
+    print(vector.Y)
+    vector.X = 6.0
+    vector.Y = 4.0
+    print(vector.X)
+    print(vector.Y)
 
     obj = MyObject()
     value = obj.add(3.0, 4.0)
-    print(type(value), value[0])
-    # print("obj: ", hex(id(obj)))
+    vec_value = obj.TestVector(vector)
+
+    # print(vector)
     # print(f"Original ref count of value: {sys.getrefcount(value)}")
-    # del
+    # print(f"Original ref count of vector: {sys.getrefcount(vector)}")
+    # print(type(value), value[0])
+    print(type(vec_value), vec_value[0])
+    print("obj: ", hex(id(obj)))
+    
+    # del obj

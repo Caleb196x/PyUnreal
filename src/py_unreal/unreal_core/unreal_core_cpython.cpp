@@ -439,6 +439,7 @@ static int Argument_init(Argument* self, PyObject* args)
         // todo@Caleb196x: implement special type such as list, set or map
         self->value_type = ARGUMENT_TYPE_OBJECT;
         self->object = value;
+        Py_INCREF(self->object);
     }
 
     return 0;
@@ -464,7 +465,6 @@ static PyObject* Argument_new(PyTypeObject* type, PyObject* args, PyObject* kwds
 
 static void Argument_dealloc(Argument* self)
 {
-    printf("Argument_dealloc\n");
     if (self->value_type == ARGUMENT_TYPE_OBJECT)
     {
         Py_DECREF(self->object);
@@ -771,12 +771,12 @@ static PyObject* create_object_from_specified_class(const char* class_type_name)
     if (py_object == NULL) {
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for unreal object");
         Py_DECREF(py_module);
-        Py_INCREF(py_class);
+        Py_DECREF(py_class);
         return NULL;
     }
 
-    Py_INCREF(py_module);
-    Py_INCREF(py_class);
+    Py_DECREF(py_module);
+    Py_DECREF(py_class);
 
     return py_object;
 }
@@ -819,7 +819,6 @@ static PyObject* parse_value_from_function_return(const  UnrealCore::Argument::R
         case UnrealCore::Argument::UINT_VALUE:
             return PyLong_FromUnsignedLongLong(return_value.getUintValue());
         case UnrealCore::Argument::INT_VALUE:
-            printf("class_type_name: %s, value: %lld\n", class_type_name, return_value.getIntValue());
             return PyLong_FromLongLong(return_value.getIntValue());
         case UnrealCore::Argument::FLOAT_VALUE:
             return PyFloat_FromDouble(return_value.getFloatValue());
@@ -935,16 +934,12 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
         auto out_params = result.getOutParams();
         auto out_params_size = out_params.size();
 
-        PyObject* tuple = PyTuple_New(out_params_size + 1);
-        Py_DECREF(return_value);
+        PyObject* tuple = PyTuple_New(out_params_size + 1); // +1 for return value
         PyTuple_SetItem(tuple, 0, return_value);
-
-        printf("out_params_size: %d\n", out_params_size);
 
         for (Py_ssize_t i = 0; i < out_params_size; ++i) {
             // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
             PyObject* out_param = parse_value_from_function_return(out_params[i], false); 
-            Py_DECREF(out_param);
             PyTuple_SetItem(tuple, i + 1, out_param);
         }
 
@@ -1005,13 +1000,13 @@ static PyObject* unreal_core_call_static_function(PyObject* self, PyObject* args
         auto out_params = result.getOutParams();
         auto out_params_size = out_params.size();
 
-        PyObject* tuple = PyTuple_New(out_params_size);
-        PyTuple_SET_ITEM(tuple, 0, return_value);
-        for (Py_ssize_t i = 0; i < out_params_size; i++) {
+        PyObject* tuple = PyTuple_New(out_params_size + 1); // +1 for return value
+        PyTuple_SetItem(tuple, 0, return_value);
+
+        for (Py_ssize_t i = 0; i < out_params_size; ++i) {
             // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
             PyObject* out_param = parse_value_from_function_return(out_params[i], false); 
-            
-            PyTuple_SET_ITEM(tuple, i + 1, out_param);
+            PyTuple_SetItem(tuple, i + 1, out_param);
         }
 
         return tuple; 
