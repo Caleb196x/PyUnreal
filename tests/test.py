@@ -2,6 +2,7 @@ import unreal_core
 from unreal_core import UnrealObject, ClassProp, Argument
 import sys
 import gc
+from enum import Enum
 import faulthandler
 faulthandler.enable()
 
@@ -28,6 +29,11 @@ class MyObject:
         print("TestVector: ", hex(id(vector)))
         arg = Argument("Vector", self._ue_class, vector)
         return unreal_core.call_function(self, self._ue_obj, self._ue_class, "TestVector", [arg])
+    
+    def TestEnum(self, enum):
+        print("type enum: ", type(enum))
+        arg = Argument("Enum", self._ue_class, enum, 'enum')
+        return unreal_core.call_function(self, self._ue_obj, self._ue_class, "TestEnum", [arg])
     
 class Vector2D:
     def __init__(self, X, Y):
@@ -63,6 +69,10 @@ class Vector2D:
         arg = Argument("Y", self._ue_class, value)
         unreal_core.set_property(self, self._ue_class, arg)
 
+class MyEnum(Enum):
+    TEST = 0
+    TEST2 = 1
+    TEST3 = 2
 
 if __name__ == "__main__":
     vector = Vector2D(1.0, 2.0)
@@ -76,6 +86,7 @@ if __name__ == "__main__":
     obj = MyObject()
     value = obj.add(3.0, 4.0)
     vec_value = obj.TestVector(vector)
+    a = obj.TestEnum(MyEnum.TEST3)
 
     # print(vector)
     # print(f"Original ref count of value: {sys.getrefcount(value)}")

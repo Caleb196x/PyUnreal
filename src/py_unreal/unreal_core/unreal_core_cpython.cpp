@@ -45,6 +45,23 @@ static inline char* deep_copy_str(const char* src)
     return dest;
 }
 
+int is_enum_type(PyObject* obj) {
+    PyObject* enum_module = PyImport_ImportModule("enum");
+    if (!enum_module) return 0;
+
+    PyObject* enum_class = PyObject_GetAttrString(enum_module, "Enum");
+    if (!enum_class) {
+        Py_DECREF(enum_module);
+        return 0;
+    }
+
+    int result = PyObject_IsInstance(obj, enum_class);
+
+    Py_DECREF(enum_class);
+    Py_DECREF(enum_module);
+    return result;
+}
+
 /**
  * capnp client
  */
@@ -435,6 +452,17 @@ static int Argument_init(Argument* self, PyObject* args)
         self->value_type = ARGUMENT_TYPE_STRING;
         self->str_value = PyUnicode_AsUTF8(value);
     }
+    else if (is_enum_type(value)) {
+        printf("enum type\n");
+        PyObject* enum_value = PyObject_GetAttrString(value, "value");
+        if (!value) {
+            PyErr_SetString(PyExc_RuntimeError, "Can not read the value of enum object");
+            return -1;
+        }
+        self->value_type = ARGUMENT_TYPE_ENUM;
+        self->enum_value = PyLong_AsLongLong(enum_value);
+        printf("enum value: %lld\n", self->enum_value);
+    }
     else {
         // todo@Caleb196x: implement special type such as list, set or map
         self->value_type = ARGUMENT_TYPE_OBJECT;
@@ -801,6 +829,10 @@ static PyObject* parse_value_from_function_return(const  UnrealCore::Argument::R
     // Initialize the object's fields
     const char* class_type_name = return_value.getUeClass().getTypeName().cStr();
 
+    if (class_type_name != NULL && strcmp(class_type_name, "void") == 0) {
+        return Py_None;
+    }
+
     // maybe unuse
     const char* name = return_value.getName().cStr();
 
@@ -930,6 +962,10 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
             return NULL; 
         }
 
+        if (Py_None == return_value) {
+            return PyTuple_New(0);
+        }
+
         // handle out params
         auto out_params = result.getOutParams();
         auto out_params_size = out_params.size();
@@ -939,7 +975,13 @@ static PyObject* unreal_core_call_function(PyObject* self, PyObject* args)
 
         for (Py_ssize_t i = 0; i < out_params_size; ++i) {
             // fixme: do not create new py object when out params is unreal object, directly return the passed in py object
-            PyObject* out_param = parse_value_from_function_return(out_params[i], false); 
+            PyObject* out_param = parse_value_from_function_return(out_params[i], false);
+            if (out_param == NULL) {
+                Py_DECREF(tuple);
+                Py_DECREF(return_value);
+                return NULL;
+            }
+
             PyTuple_SetItem(tuple, i + 1, out_param);
         }
 
