@@ -2,7 +2,7 @@ import sys
 import gc
 
 from typing import List
-from py_unreal.UE import Vector2D, MyObject, MyEnum, Array
+from pyunreal.UE import Vector2D, MyObject, MyEnum, Array
 import faulthandler
 faulthandler.enable()
 

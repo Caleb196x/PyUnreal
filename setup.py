@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="py_unreal",
+    name="pyunreal",
     use_scm_version=True,
     setup_requires=["setuptools_scm"],
     package_dir={
