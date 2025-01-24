@@ -64,6 +64,10 @@ CAPNP_DECLARE_SCHEMA(e3e7ec6b9d30864b);
 CAPNP_DECLARE_SCHEMA(ff494a70ed24ffae);
 CAPNP_DECLARE_SCHEMA(95cc54545d641932);
 CAPNP_DECLARE_SCHEMA(92051293bef37fa0);
+CAPNP_DECLARE_SCHEMA(a5f2e034f5cf3ef2);
+CAPNP_DECLARE_SCHEMA(ae7fcc084082d1c0);
+CAPNP_DECLARE_SCHEMA(99203a7e28b05827);
+CAPNP_DECLARE_SCHEMA(bf109ec66ad97a7d);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -115,6 +119,10 @@ struct UnrealCore {
   struct GetPropertyResults;
   struct RegisterCreatedPyObjectParams;
   struct RegisterCreatedPyObjectResults;
+  struct NewContainerParams;
+  struct NewContainerResults;
+  struct DestroyContainerParams;
+  struct DestroyContainerResults;
 
   #if !CAPNP_LITE
   struct _capnpPrivate {
@@ -771,6 +779,66 @@ struct UnrealCore::RegisterCreatedPyObjectResults {
   };
 };
 
+struct UnrealCore::NewContainerParams {
+  NewContainerParams() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(a5f2e034f5cf3ef2, 0, 4)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct UnrealCore::NewContainerResults {
+  NewContainerResults() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(ae7fcc084082d1c0, 0, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct UnrealCore::DestroyContainerParams {
+  DestroyContainerParams() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(99203a7e28b05827, 0, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct UnrealCore::DestroyContainerResults {
+  DestroyContainerResults() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(bf109ec66ad97a7d, 1, 0)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
 // =======================================================================================
 
 #if !CAPNP_LITE
@@ -823,6 +891,10 @@ public:
   ::capnp::Request< ::UnrealCore::GetPropertyParams,  ::UnrealCore::GetPropertyResults> getPropertyRequest(
       ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
   ::capnp::Request< ::UnrealCore::RegisterCreatedPyObjectParams,  ::UnrealCore::RegisterCreatedPyObjectResults> registerCreatedPyObjectRequest(
+      ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
+  ::capnp::Request< ::UnrealCore::NewContainerParams,  ::UnrealCore::NewContainerResults> newContainerRequest(
+      ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
+  ::capnp::Request< ::UnrealCore::DestroyContainerParams,  ::UnrealCore::DestroyContainerResults> destroyContainerRequest(
       ::kj::Maybe< ::capnp::MessageSize> sizeHint = nullptr);
 
 protected:
@@ -904,6 +976,14 @@ protected:
   typedef  ::UnrealCore::RegisterCreatedPyObjectResults RegisterCreatedPyObjectResults;
   typedef ::capnp::CallContext<RegisterCreatedPyObjectParams, RegisterCreatedPyObjectResults> RegisterCreatedPyObjectContext;
   virtual ::kj::Promise<void> registerCreatedPyObject(RegisterCreatedPyObjectContext context);
+  typedef  ::UnrealCore::NewContainerParams NewContainerParams;
+  typedef  ::UnrealCore::NewContainerResults NewContainerResults;
+  typedef ::capnp::CallContext<NewContainerParams, NewContainerResults> NewContainerContext;
+  virtual ::kj::Promise<void> newContainer(NewContainerContext context);
+  typedef  ::UnrealCore::DestroyContainerParams DestroyContainerParams;
+  typedef  ::UnrealCore::DestroyContainerResults DestroyContainerResults;
+  typedef ::capnp::CallContext<DestroyContainerParams, DestroyContainerResults> DestroyContainerContext;
+  virtual ::kj::Promise<void> destroyContainer(DestroyContainerContext context);
 
   inline  ::UnrealCore::Client thisCap() {
     return ::capnp::Capability::Server::thisCap()
@@ -4536,6 +4616,361 @@ private:
 };
 #endif  // !CAPNP_LITE
 
+class UnrealCore::NewContainerParams::Reader {
+public:
+  typedef NewContainerParams Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasOwn() const;
+  inline  ::UnrealCore::Object::Reader getOwn() const;
+
+  inline bool hasContainerType() const;
+  inline  ::UnrealCore::Class::Reader getContainerType() const;
+
+  inline bool hasValueType() const;
+  inline  ::UnrealCore::Class::Reader getValueType() const;
+
+  inline bool hasKeyType() const;
+  inline  ::UnrealCore::Class::Reader getKeyType() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class UnrealCore::NewContainerParams::Builder {
+public:
+  typedef NewContainerParams Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasOwn();
+  inline  ::UnrealCore::Object::Builder getOwn();
+  inline void setOwn( ::UnrealCore::Object::Reader value);
+  inline  ::UnrealCore::Object::Builder initOwn();
+  inline void adoptOwn(::capnp::Orphan< ::UnrealCore::Object>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Object> disownOwn();
+
+  inline bool hasContainerType();
+  inline  ::UnrealCore::Class::Builder getContainerType();
+  inline void setContainerType( ::UnrealCore::Class::Reader value);
+  inline  ::UnrealCore::Class::Builder initContainerType();
+  inline void adoptContainerType(::capnp::Orphan< ::UnrealCore::Class>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Class> disownContainerType();
+
+  inline bool hasValueType();
+  inline  ::UnrealCore::Class::Builder getValueType();
+  inline void setValueType( ::UnrealCore::Class::Reader value);
+  inline  ::UnrealCore::Class::Builder initValueType();
+  inline void adoptValueType(::capnp::Orphan< ::UnrealCore::Class>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Class> disownValueType();
+
+  inline bool hasKeyType();
+  inline  ::UnrealCore::Class::Builder getKeyType();
+  inline void setKeyType( ::UnrealCore::Class::Reader value);
+  inline  ::UnrealCore::Class::Builder initKeyType();
+  inline void adoptKeyType(::capnp::Orphan< ::UnrealCore::Class>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Class> disownKeyType();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class UnrealCore::NewContainerParams::Pipeline {
+public:
+  typedef NewContainerParams Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::UnrealCore::Object::Pipeline getOwn();
+  inline  ::UnrealCore::Class::Pipeline getContainerType();
+  inline  ::UnrealCore::Class::Pipeline getValueType();
+  inline  ::UnrealCore::Class::Pipeline getKeyType();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class UnrealCore::NewContainerResults::Reader {
+public:
+  typedef NewContainerResults Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasContainer() const;
+  inline  ::UnrealCore::Object::Reader getContainer() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class UnrealCore::NewContainerResults::Builder {
+public:
+  typedef NewContainerResults Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasContainer();
+  inline  ::UnrealCore::Object::Builder getContainer();
+  inline void setContainer( ::UnrealCore::Object::Reader value);
+  inline  ::UnrealCore::Object::Builder initContainer();
+  inline void adoptContainer(::capnp::Orphan< ::UnrealCore::Object>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Object> disownContainer();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class UnrealCore::NewContainerResults::Pipeline {
+public:
+  typedef NewContainerResults Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::UnrealCore::Object::Pipeline getContainer();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class UnrealCore::DestroyContainerParams::Reader {
+public:
+  typedef DestroyContainerParams Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasOwn() const;
+  inline  ::UnrealCore::Object::Reader getOwn() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class UnrealCore::DestroyContainerParams::Builder {
+public:
+  typedef DestroyContainerParams Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasOwn();
+  inline  ::UnrealCore::Object::Builder getOwn();
+  inline void setOwn( ::UnrealCore::Object::Reader value);
+  inline  ::UnrealCore::Object::Builder initOwn();
+  inline void adoptOwn(::capnp::Orphan< ::UnrealCore::Object>&& value);
+  inline ::capnp::Orphan< ::UnrealCore::Object> disownOwn();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class UnrealCore::DestroyContainerParams::Pipeline {
+public:
+  typedef DestroyContainerParams Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::UnrealCore::Object::Pipeline getOwn();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class UnrealCore::DestroyContainerResults::Reader {
+public:
+  typedef DestroyContainerResults Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool getResult() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class UnrealCore::DestroyContainerResults::Builder {
+public:
+  typedef DestroyContainerResults Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool getResult();
+  inline void setResult(bool value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class UnrealCore::DestroyContainerResults::Pipeline {
+public:
+  typedef DestroyContainerResults Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 // =======================================================================================
 
 #if !CAPNP_LITE
@@ -6967,6 +7402,254 @@ inline void UnrealCore::RegisterCreatedPyObjectParams::Builder::adoptUeClass(
 inline ::capnp::Orphan< ::UnrealCore::Class> UnrealCore::RegisterCreatedPyObjectParams::Builder::disownUeClass() {
   return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::disown(_builder.getPointerField(
       ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::NewContainerParams::Reader::hasOwn() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::NewContainerParams::Builder::hasOwn() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Object::Reader UnrealCore::NewContainerParams::Reader::getOwn() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::NewContainerParams::Builder::getOwn() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Object::Pipeline UnrealCore::NewContainerParams::Pipeline::getOwn() {
+  return  ::UnrealCore::Object::Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::NewContainerParams::Builder::setOwn( ::UnrealCore::Object::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::NewContainerParams::Builder::initOwn() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::NewContainerParams::Builder::adoptOwn(
+    ::capnp::Orphan< ::UnrealCore::Object>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Object> UnrealCore::NewContainerParams::Builder::disownOwn() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::NewContainerParams::Reader::hasContainerType() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::NewContainerParams::Builder::hasContainerType() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Class::Reader UnrealCore::NewContainerParams::Reader::getContainerType() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::NewContainerParams::Builder::getContainerType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Class::Pipeline UnrealCore::NewContainerParams::Pipeline::getContainerType() {
+  return  ::UnrealCore::Class::Pipeline(_typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::NewContainerParams::Builder::setContainerType( ::UnrealCore::Class::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::NewContainerParams::Builder::initContainerType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::NewContainerParams::Builder::adoptContainerType(
+    ::capnp::Orphan< ::UnrealCore::Class>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Class> UnrealCore::NewContainerParams::Builder::disownContainerType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::disown(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::NewContainerParams::Reader::hasValueType() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::NewContainerParams::Builder::hasValueType() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Class::Reader UnrealCore::NewContainerParams::Reader::getValueType() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_reader.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::NewContainerParams::Builder::getValueType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Class::Pipeline UnrealCore::NewContainerParams::Pipeline::getValueType() {
+  return  ::UnrealCore::Class::Pipeline(_typeless.getPointerField(2));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::NewContainerParams::Builder::setValueType( ::UnrealCore::Class::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::set(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::NewContainerParams::Builder::initValueType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::init(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::NewContainerParams::Builder::adoptValueType(
+    ::capnp::Orphan< ::UnrealCore::Class>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::adopt(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Class> UnrealCore::NewContainerParams::Builder::disownValueType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::disown(_builder.getPointerField(
+      ::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::NewContainerParams::Reader::hasKeyType() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::NewContainerParams::Builder::hasKeyType() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Class::Reader UnrealCore::NewContainerParams::Reader::getKeyType() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_reader.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::NewContainerParams::Builder::getKeyType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::get(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Class::Pipeline UnrealCore::NewContainerParams::Pipeline::getKeyType() {
+  return  ::UnrealCore::Class::Pipeline(_typeless.getPointerField(3));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::NewContainerParams::Builder::setKeyType( ::UnrealCore::Class::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::set(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Class::Builder UnrealCore::NewContainerParams::Builder::initKeyType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::init(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::NewContainerParams::Builder::adoptKeyType(
+    ::capnp::Orphan< ::UnrealCore::Class>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Class>::adopt(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Class> UnrealCore::NewContainerParams::Builder::disownKeyType() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Class>::disown(_builder.getPointerField(
+      ::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::NewContainerResults::Reader::hasContainer() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::NewContainerResults::Builder::hasContainer() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Object::Reader UnrealCore::NewContainerResults::Reader::getContainer() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::NewContainerResults::Builder::getContainer() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Object::Pipeline UnrealCore::NewContainerResults::Pipeline::getContainer() {
+  return  ::UnrealCore::Object::Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::NewContainerResults::Builder::setContainer( ::UnrealCore::Object::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::NewContainerResults::Builder::initContainer() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::NewContainerResults::Builder::adoptContainer(
+    ::capnp::Orphan< ::UnrealCore::Object>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Object> UnrealCore::NewContainerResults::Builder::disownContainer() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::DestroyContainerParams::Reader::hasOwn() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool UnrealCore::DestroyContainerParams::Builder::hasOwn() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::UnrealCore::Object::Reader UnrealCore::DestroyContainerParams::Reader::getOwn() const {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::DestroyContainerParams::Builder::getOwn() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::UnrealCore::Object::Pipeline UnrealCore::DestroyContainerParams::Pipeline::getOwn() {
+  return  ::UnrealCore::Object::Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void UnrealCore::DestroyContainerParams::Builder::setOwn( ::UnrealCore::Object::Reader value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::UnrealCore::Object::Builder UnrealCore::DestroyContainerParams::Builder::initOwn() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void UnrealCore::DestroyContainerParams::Builder::adoptOwn(
+    ::capnp::Orphan< ::UnrealCore::Object>&& value) {
+  ::capnp::_::PointerHelpers< ::UnrealCore::Object>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::UnrealCore::Object> UnrealCore::DestroyContainerParams::Builder::disownOwn() {
+  return ::capnp::_::PointerHelpers< ::UnrealCore::Object>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool UnrealCore::DestroyContainerResults::Reader::getResult() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool UnrealCore::DestroyContainerResults::Builder::getResult() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void UnrealCore::DestroyContainerResults::Builder::setResult(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 

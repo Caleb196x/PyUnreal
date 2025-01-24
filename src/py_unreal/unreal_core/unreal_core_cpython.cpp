@@ -110,9 +110,9 @@ static CapnpClient* create_ue_core_client()
     kj::Network& network = io_context.provider->getNetwork();
     auto& wait_scope = io_context.waitScope;
     uint16_t start_port = 60001;
-    uint16_t end_port = 60010;
+    uint16_t end_port = 60005;
 
-    // find the right port from 60001 to 60010
+    // find the right port from start_port to end_port
     for (uint16_t port = start_port; port <= end_port; ++port) {
         char ip_addr[20];
         sprintf(ip_addr, "127.0.0.1:%d", port);
@@ -132,7 +132,7 @@ static CapnpClient* create_ue_core_client()
 
             server_port = port;
 
-            printf("connect to rpc server: %s success\n", ip_addr);
+            printf("connect to unreal rpc server: %s success\n", ip_addr);
 
             break;
             
@@ -142,13 +142,13 @@ static CapnpClient* create_ue_core_client()
                 // On Windows, convert to wide string and back to handle encoding
                 const char* formatted_desc = format_win_characters(err_desc);
 #endif
-            printf("connect to %s failed, error: %s, try next port\n", ip_addr, formatted_desc);
+            printf("connect to unreal rpc server %s failed, error: %s, try next port\n", ip_addr, formatted_desc);
             delete[] formatted_desc;
             
             continue;
 
         } catch (std::exception& e) {
-            printf("connect to %s failed, error: %s\n", ip_addr, e.what());
+            printf("connect to unreal rpc server %s failed, error: %s\n", ip_addr, e.what());
 
             break;
         }
@@ -731,7 +731,20 @@ static PyObject* unreal_core_new_object(PyObject* self, PyObject* args)
 
     kj::WaitScope& wait_scope = io_context.waitScope;
     CATCH_EXCEPTION_FOR_RPC_CALL({
-        capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().wait(wait_scope);
+        capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().catch_([](kj::Exception& e){
+            switch (e.getType()) {
+                case kj::Exception::Type::FAILED:
+                    PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
+                    break;
+                case kj::Exception::Type::DISCONNECTED:
+                    PyErr_SetString(PyExc_RuntimeError, "connection to unreal engine is lost, error: ");
+                    break;
+                default:
+                    PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
+                    break;
+            }
+            
+        }).wait(wait_scope);
         
         UnrealObject* unreal_object = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type);
         unreal_object->address = result.getObject().getAddress();

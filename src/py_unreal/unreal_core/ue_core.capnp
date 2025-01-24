@@ -64,5 +64,8 @@ interface UnrealCore
     setProperty @13 (ueClass :Class, owner :Object, property :Argument) -> ();
     getProperty @14 (ueClass :Class, owner :Object, propertyName :Text) -> (property :Argument);
 
-    registerCreatedPyObject @15 (pyObject :Object, unrealObject :Object, ue_class :Class) -> ();
+    registerCreatedPyObject @15 (pyObject :Object, unrealObject :Object, ueClass :Class) -> ();
+
+    newContainer @16 (own :Object, containerType :Class, valueType :Class, keyType :Class) -> (container :Object);
+    destroyContainer @17 (own :Object) -> (result :Bool);
 }
