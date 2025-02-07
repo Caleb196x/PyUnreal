@@ -731,20 +731,21 @@ static PyObject* unreal_core_new_object(PyObject* self, PyObject* args)
 
     kj::WaitScope& wait_scope = io_context.waitScope;
     CATCH_EXCEPTION_FOR_RPC_CALL({
-        capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().catch_([](kj::Exception& e){
-            switch (e.getType()) {
-                case kj::Exception::Type::FAILED:
-                    PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
-                    break;
-                case kj::Exception::Type::DISCONNECTED:
-                    PyErr_SetString(PyExc_RuntimeError, "connection to unreal engine is lost, error: ");
-                    break;
-                default:
-                    PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
-                    break;
-            }
+        capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().wait(wait_scope);
+        // capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().catch_([](kj::Exception& e){
+        //     switch (e.getType()) {
+        //         case kj::Exception::Type::FAILED:
+        //             PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
+        //             break;
+        //         case kj::Exception::Type::DISCONNECTED:
+        //             PyErr_SetString(PyExc_RuntimeError, "connection to unreal engine is lost, error: ");
+        //             break;
+        //         default:
+        //             PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
+        //             break;
+        //     }
             
-        }).wait(wait_scope);
+        // }).wait(wait_scope);
         
         UnrealObject* unreal_object = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type);
         unreal_object->address = result.getObject().getAddress();
@@ -1139,6 +1140,9 @@ static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
     CATCH_EXCEPTION_FOR_RPC_CALL({
         set_property_request.send().wait(wait_scope);
     })
+        //     set_property_request.send().catch_([](kj::Exception&& e) -> void {
+        //     PyErr_SetString(PyExc_RuntimeError, "Failed to set property");
+        // }).wait(wait_scope);
 }
 
 static PyObject* unreal_core_find_class(PyObject* self, PyObject* args)
@@ -1186,9 +1190,21 @@ static PyObject* unreal_core_unregister_overrided_class(PyObject* self, PyObject
     Py_RETURN_NONE;
 }
 
+static PyObject* unreal_core_new_container(PyObject* self, PyObject* args)
+{
+    Py_RETURN_NONE;
+}
+
+static PyObject* unreal_core_destroy_container(PyObject* self, PyObject* args)
+{
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef unreal_core_methods[] = {
     {"new_object", unreal_core_new_object, METH_VARARGS, "Create a new unreal object"},
     {"destory_object", unreal_core_destory_object, METH_VARARGS, "Destory a unreal object"},
+    {"new_container", unreal_core_new_container, METH_VARARGS, "Create a new container"},
+    {"destroy_container", unreal_core_destroy_container, METH_VARARGS, "Destroy a container"},
     {"call_function", unreal_core_call_function, METH_VARARGS, "Call a function"},
     {"call_static_function", unreal_core_call_static_function, METH_VARARGS, "Call a static function"},
     {"get_property", unreal_core_get_property, METH_VARARGS, "Get a property"},

@@ -31,7 +31,7 @@ class MyObject:
     def add(self, a:int, b:int):
         arg1 = Argument("a", self._ue_class, a, "int")
         arg2 = Argument("b", self._ue_class, b, "int")
-        return unreal_core.call_function(self, self._ue_obj, self._ue_class, "Add", [arg1, arg2])
+        return unreal_core.call_function(self, self._ue_obj, self._ue_class, "Add2", [arg1, arg2])
     
     def TestVector(self, vector):
         print("TestVector: ", hex(id(vector)))
