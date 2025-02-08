@@ -1,19 +1,50 @@
 import unreal_core 
-from unreal_core import ClassProp, Argument
+from unreal_core import ClassProp, Argument, UnrealObject
 from enum import Enum
+from typing import TypeVar, MutableSequence
 
-class Array:
-    def __init__(self, element_type: type, size: int = 1):
+_ElemType = TypeVar('_ElemType')
+_KeyType = TypeVar('_KeyType')
+_ValueType = TypeVar('_ValueType')
+
+class Array(MutableSequence[_ElemType]):
+    def __init__(self, element_type: type, size: int = 1) -> None:
         self._size = size
         self._data = [0] * size
         if not isinstance(element_type, type):
             raise ValueError("element_type must be a type")
-        print(element_type)
+        print("element_type: ", element_type.__name__)
         print(size)
+        self._ue_class = ClassProp("Array")
+        self._ue_value_type = ClassProp(element_type.__name__)
+        self._ue_key_type = ClassProp("")
+        self._ue_container = unreal_core.new_container(self, self._ue_class, self._ue_value_type, self._ue_key_type)
+        print("ue_container: ", self._ue_container)
+    
+    def __setitem__(self, index: int, value: _ElemType) -> None:
+        self._data[index] = value
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> _ElemType:
         return self._data[index]
+    
+    def __len__(self) -> int:
+        return len(self._data)
+    
+    def __del__(self) -> None:
+        unreal_core.destroy_container(self)
         
+    def __repr__(self) -> str:
+        return f"Array({self._size})"
+    
+    def __delitem__(self, index: int) -> None:
+        pass
+
+    def insert(self, index: int, value: _ElemType) -> None:
+        self._data.insert(index, value)
+
+    def append(self, value: _ElemType) -> None:
+        self._data.append(value)
+
 class MyObject:
     def __init__(self) -> None:
         self._ue_class = ClassProp("MyObject")
@@ -78,6 +109,15 @@ class Vector2D:
         unreal_core.set_property(self, self._ue_class, arg)
 
 class MyEnum(Enum):
+    """
+    Test enum
+    """
     TEST = 0
     TEST2 = 1
     TEST3 = 2
+
+def test_func():
+    """
+    Test function
+    """
+    print("test_func")

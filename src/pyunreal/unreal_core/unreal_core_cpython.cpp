@@ -204,7 +204,10 @@ static PyObject* UnrealObject_new(PyTypeObject* type, PyObject* args, PyObject* 
 
 static void UnrealObject_dealloc(UnrealObject* self)
 {
-    if (self->name != NULL) free(self->name);
+    if (self->name != NULL) {
+        free(self->name);
+        self->name = NULL;
+    }
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -224,7 +227,7 @@ static PyTypeObject UnrealObject_Type = {
     0,                                 /* tp_as_mapping */
     0,                                 /* tp_hash */
     0,                                 /* tp_call */
-    0,                                 /* tp_str */
+    (reprfunc)UnrealObject_repr,       /* tp_str */
     0,                                 /* tp_getattro */
     0,                                 /* tp_setattro */
     0,                                 /* tp_as_buffer */
@@ -306,7 +309,7 @@ static PyTypeObject ClassProp_Type = {
     0,                             /* tp_as_mapping */
     0,                             /* tp_hash */
     0,                             /* tp_call */
-    0,                             /* tp_str */
+    (reprfunc)ClassProp_repr,      /* tp_str */
     0,                             /* tp_getattro */
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
@@ -512,7 +515,7 @@ static PyTypeObject Argument_Type = {
     0,                             /* tp_as_mapping */
     0,                             /* tp_hash */
     0,                             /* tp_call */
-    0,                             /* tp_str */
+    (reprfunc)Argument_repr,       /* tp_str */
     0,                             /* tp_getattro */
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
@@ -576,7 +579,7 @@ static PyTypeObject Method_Type = {
     0,                             /* tp_as_mapping */
     0,                             /* tp_hash */
     0,                             /* tp_call */
-    0,                             /* tp_str */
+    (reprfunc)Method_repr,         /* tp_str */
     0,                             /* tp_getattro */
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
@@ -726,20 +729,6 @@ static PyObject* unreal_core_new_object(PyObject* self, PyObject* args)
     kj::WaitScope& wait_scope = io_context.waitScope;
     CATCH_EXCEPTION_FOR_RPC_CALL({
         capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().wait(wait_scope);
-        // capnp::Response<UnrealCore::NewObjectResults> result = new_object_request.send().catch_([](kj::Exception& e){
-        //     switch (e.getType()) {
-        //         case kj::Exception::Type::FAILED:
-        //             PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
-        //             break;
-        //         case kj::Exception::Type::DISCONNECTED:
-        //             PyErr_SetString(PyExc_RuntimeError, "connection to unreal engine is lost, error: ");
-        //             break;
-        //         default:
-        //             PyErr_SetString(PyExc_RuntimeError, e.getDescription().cStr());
-        //             break;
-        //     }
-            
-        // }).wait(wait_scope);
         
         UnrealObject* unreal_object = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type);
         unreal_object->address = result.getObject().getAddress();
@@ -1134,9 +1123,6 @@ static PyObject* unreal_core_set_property(PyObject* self, PyObject* args)
     CATCH_EXCEPTION_FOR_RPC_CALL({
         set_property_request.send().wait(wait_scope);
     })
-        //     set_property_request.send().catch_([](kj::Exception&& e) -> void {
-        //     PyErr_SetString(PyExc_RuntimeError, "Failed to set property");
-        // }).wait(wait_scope);
 }
 
 static PyObject* unreal_core_find_class(PyObject* self, PyObject* args)
@@ -1186,12 +1172,65 @@ static PyObject* unreal_core_unregister_overrided_class(PyObject* self, PyObject
 
 static PyObject* unreal_core_new_container(PyObject* self, PyObject* args)
 {
-    Py_RETURN_NONE;
+    CHECK_CLIENT_AND_RECREATE_IT()
+
+    PyObject* self_object = NULL;
+    ClassProp* container_type = NULL;
+    ClassProp* value_type = NULL;
+    ClassProp* key_type = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO!O!O!", &self_object, &ClassProp_Type, &container_type, &ClassProp_Type, &value_type, &ClassProp_Type, &key_type)) {
+        return NULL;
+    }
+
+    if (self_object == Py_None) {
+        PyErr_SetString(PyExc_ValueError, "Must pass into self object rather than None");
+        return NULL;
+    }
+
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+
+    auto new_container_request = client.newContainerRequest();
+    new_container_request.initOwn().setAddress(reinterpret_cast<uint64_t>(self_object));
+    new_container_request.initContainerType().setTypeName(container_type->type_name);
+    new_container_request.initValueType().setTypeName(value_type->type_name);
+    new_container_request.initKeyType().setTypeName(key_type->type_name);
+
+    kj::WaitScope& wait_scope = io_context.waitScope;
+    CATCH_EXCEPTION_FOR_RPC_CALL({
+        capnp::Response<UnrealCore::NewContainerResults> result = new_container_request.send().wait(wait_scope);
+        UnrealObject* unreal_object = (UnrealObject*)PyObject_New(UnrealObject, &UnrealObject_Type);
+        unreal_object->address = result.getContainer().getAddress();
+        unreal_object->name = deep_copy_str(container_type->type_name.c_str());
+        
+        return (PyObject*)unreal_object;
+    })
 }
 
 static PyObject* unreal_core_destroy_container(PyObject* self, PyObject* args)
 {
-    Py_RETURN_NONE;
+    CHECK_CLIENT_AND_RECREATE_IT()
+
+    PyObject* self_object = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &self_object)) {
+        return NULL;
+    }
+
+    if (self_object == Py_None) {
+        PyErr_SetString(PyExc_ValueError, "Must pass into self object rather than None");
+        return NULL;
+    }
+
+    UnrealCore::Client client = ue_core_client->client->bootstrap().castAs<UnrealCore>();
+    auto destroy_container_request = client.destroyContainerRequest();
+    destroy_container_request.initOwn().setAddress(reinterpret_cast<uint64_t>(self_object));
+
+    kj::WaitScope& wait_scope = io_context.waitScope;
+    CATCH_EXCEPTION_FOR_RPC_CALL({
+        destroy_container_request.send().wait(wait_scope);
+        Py_RETURN_NONE;
+    })
 }
 
 static PyMethodDef unreal_core_methods[] = {

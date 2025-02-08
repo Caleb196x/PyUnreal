@@ -2,7 +2,7 @@ import sys
 import gc
 
 from typing import List
-from pyunreal.UE import Vector2D, MyObject, MyEnum, Array
+from pyunreal.UE import Vector2D, MyObject, MyEnum, Array, test_func
 import faulthandler
 faulthandler.enable()
 
@@ -26,6 +26,7 @@ if __name__ == "__main__":
     # print(type(value), value[0])
     print(type(vec_value), vec_value[0])
     print("obj type: ", type(MyObject))
+    print("obj address: ", obj)
 
     a = []
     a.append(MyObject())
@@ -38,6 +39,8 @@ if __name__ == "__main__":
     numbers: List[int] = [1, "2", 3]
     print(numbers)
 
-    arr = Array(float, 10)
-    print(arr[0])
-    # del obj
+    arr : Array[int] = Array[int](int, 10)
+    # arr[0] = obj
+    # print(arr[0])
+
+
