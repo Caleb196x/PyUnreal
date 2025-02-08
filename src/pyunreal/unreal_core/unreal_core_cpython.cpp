@@ -20,15 +20,8 @@
     try { \
         code \
     } catch (kj::Exception& e) { \
-        const char* err_file = e.getFile(); \
-        const int err_line = e.getLine(); \
         const char* err_msg = e.getDescription().cStr(); \
-        size_t err_size = strlen(err_file) + strlen(err_msg) + 5; \
-        char* err_str = (char*)malloc(err_size); \
-        const char* formatted_msg = format_win_characters(err_msg); \
-        sprintf(err_str, "[%s]:[%d]: %s", err_file, err_line, formatted_msg); \
-        PyErr_SetString(PyExc_RuntimeError, err_str); \
-        free(err_str); \
+        PyErr_SetString(PyExc_RuntimeError, err_msg); \
         return NULL; \
     } \
 
