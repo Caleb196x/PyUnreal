@@ -40,7 +40,8 @@ if __name__ == "__main__":
     print(numbers)
 
     arr : Array[int] = Array[int](int, 10)
-    # arr[0] = obj
-    # print(arr[0])
+    arr[0] = 1
+    arr[1] = 2
+    print(arr[1])
 
 

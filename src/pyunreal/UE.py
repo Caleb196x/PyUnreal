@@ -15,17 +15,23 @@ class Array(MutableSequence[_ElemType]):
             raise ValueError("element_type must be a type")
         print("element_type: ", element_type.__name__)
         print(size)
-        self._ue_class = ClassProp("Array")
+        self._container_type = ClassProp("Array")
         self._ue_value_type = ClassProp(element_type.__name__)
         self._ue_key_type = ClassProp("")
-        self._ue_container = unreal_core.new_container(self, self._ue_class, self._ue_value_type, self._ue_key_type)
+        self._ue_container = unreal_core.new_container(self, self._container_type, self._ue_value_type, self._ue_key_type)
         print("ue_container: ", self._ue_container)
     
     def __setitem__(self, index: int, value: _ElemType) -> None:
-        self._data[index] = value
+        print("setitem: ", index, value)
+        arg1 = Argument("Index", self._container_type, index, "int")
+        arg2 = Argument("Value", self._container_type, value, _ElemType.__name__)
+        unreal_core.call_function(self, self._ue_container, self._container_type, "Set", [arg1, arg2])
 
     def __getitem__(self, index: int) -> _ElemType:
-        return self._data[index]
+        print("getitem: ", index)
+        arg1 = Argument("Index", self._container_type, index, "int")
+        val = unreal_core.call_function(self, self._ue_container, self._container_type, "Get", [arg1])
+        return val[0]
     
     def __len__(self) -> int:
         return len(self._data)
@@ -48,6 +54,7 @@ class Array(MutableSequence[_ElemType]):
 class MyObject:
     def __init__(self) -> None:
         self._ue_class = ClassProp("MyObject")
+        # fixme@Caleb196x: object name must be unique
         self._ue_obj = unreal_core.new_object(self, self._ue_class, "test", 0, [])
         # print("MyObject object: ", hex(id(self)))
 
